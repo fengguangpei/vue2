@@ -112,18 +112,21 @@ function initProps (vm: Component, propsOptions: Object) {
     // static props are already proxied on the component's prototype
     // during Vue.extend(). We only need to proxy props defined at
     // instantiation here.
+    // 代理props的直接访问
     if (!(key in vm)) {
       proxy(vm, `_props`, key)
     }
   }
   toggleObserving(true)
 }
-
+/** 初始化Data */
 function initData (vm: Component) {
   let data = vm.$options.data
+  // 判断是否是工厂函数
   data = vm._data = typeof data === 'function'
     ? getData(data, vm)
     : data || {}
+  // 开发环境，如果不是纯对象，控制台打印警告
   if (!isPlainObject(data)) {
     data = {}
     process.env.NODE_ENV !== 'production' && warn(
@@ -133,12 +136,14 @@ function initData (vm: Component) {
     )
   }
   // proxy data on instance
+  // 代理属性
   const keys = Object.keys(data)
   const props = vm.$options.props
   const methods = vm.$options.methods
   let i = keys.length
   while (i--) {
     const key = keys[i]
+    // 成员属性和成员方法同名，控制台打印警告
     if (process.env.NODE_ENV !== 'production') {
       if (methods && hasOwn(methods, key)) {
         warn(
@@ -147,6 +152,7 @@ function initData (vm: Component) {
         )
       }
     }
+    // 成员属性和props同名，控制台打印警告
     if (props && hasOwn(props, key)) {
       process.env.NODE_ENV !== 'production' && warn(
         `The data property "${key}" is already declared as a prop. ` +
@@ -154,10 +160,12 @@ function initData (vm: Component) {
         vm
       )
     } else if (!isReserved(key)) {
+      // 如果不是保留字 代理属性
       proxy(vm, `_data`, key)
     }
   }
   // observe data
+  // 响应式Data
   observe(data, true /* asRootData */)
 }
 
@@ -175,7 +183,7 @@ export function getData (data: Function, vm: Component): any {
 }
 
 const computedWatcherOptions = { lazy: true }
-
+// 初始化Computed
 function initComputed (vm: Component, computed: Object) {
   // $flow-disable-line
   const watchers = vm._computedWatchers = Object.create(null)
@@ -194,6 +202,7 @@ function initComputed (vm: Component, computed: Object) {
 
     if (!isSSR) {
       // create internal watcher for the computed property.
+      // 内部watcher
       watchers[key] = new Watcher(
         vm,
         getter || noop,
@@ -205,6 +214,7 @@ function initComputed (vm: Component, computed: Object) {
     // component-defined computed properties are already defined on the
     // component prototype. We only need to define computed properties defined
     // at instantiation here.
+    /** 判断computed是否和其他选项冲突 */
     if (!(key in vm)) {
       defineComputed(vm, key, userDef)
     } else if (process.env.NODE_ENV !== 'production') {

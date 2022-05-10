@@ -124,6 +124,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
   ) {
     ob = new Observer(value)
   }
+  // 根对象，实例数量加一
   if (asRootData && ob) {
     ob.vmCount++
   }

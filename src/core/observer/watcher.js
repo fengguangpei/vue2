@@ -80,6 +80,7 @@ export default class Watcher {
     if (typeof expOrFn === 'function') {
       this.getter = expOrFn
     } else {
+      // 解析路径，返回一个获取路径值的闭包函数
       this.getter = parsePath(expOrFn)
       if (!this.getter) {
         this.getter = noop
@@ -114,6 +115,11 @@ export default class Watcher {
     } finally {
       // "touch" every property so they are all tracked as
       // dependencies for deep watching
+      /**
+       * 深度监听，遍历当前值，由于104行已通过pushTarget设置当前watcher
+       * 所以都可以收集到当前watcher
+      */
+
       if (this.deep) {
         traverse(value)
       }
