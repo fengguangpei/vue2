@@ -108,6 +108,7 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * or the existing observer if the value already has one.
  */
 export function observe (value: any, asRootData: ?boolean): Observer | void {
+  // 原始类型或者VNode跳过
   if (!isObject(value) || value instanceof VNode) {
     return
   }
@@ -115,11 +116,11 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
   if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
     ob = value.__ob__
   } else if (
-    shouldObserve &&
-    !isServerRendering() &&
-    (Array.isArray(value) || isPlainObject(value)) &&
-    Object.isExtensible(value) &&
-    !value._isVue
+    shouldObserve &&  // 是否应该响应式
+    !isServerRendering() && /// 是否是服务端渲染
+    (Array.isArray(value) || isPlainObject(value)) && // 是否是数组或者对象，排除Set、Map等其他对象
+    Object.isExtensible(value) && // 是否可以扩展
+    !value._isVue // 不是Vue构造函数
   ) {
     ob = new Observer(value)
   }
@@ -177,6 +178,7 @@ export function defineReactive (
         return
       }
       /* eslint-enable no-self-compare */
+      /** 自定义设置器，比如修改props时，开发环境打印警告 */
       if (process.env.NODE_ENV !== 'production' && customSetter) {
         customSetter()
       }

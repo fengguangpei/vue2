@@ -14,18 +14,18 @@ import {
 } from '../observer/index'
 
 import {
-  warn,
-  bind,
-  noop,
-  hasOwn,
-  hyphenate,
-  isReserved,
+  warn, // 控制台打印警告
+  bind, // bind方法
+  noop, // 空函数
+  hasOwn, // 是否有自身属性
+  hyphenate, // 驼峰转kebab-case
+  isReserved, // 是否是保留字
   handleError,
   nativeWatch,
-  validateProp,
-  isPlainObject,
-  isServerRendering,
-  isReservedAttribute,
+  validateProp, // 校验props
+  isPlainObject,  // 纯对象，而不是Set、Map等Object
+  isServerRendering,  // 是否是服务端渲染
+  isReservedAttribute, // 是否是保留属性
   invokeWithErrorHandling
 } from '../util/index'
 
@@ -45,23 +45,28 @@ export function proxy (target: Object, sourceKey: string, key: string) {
   }
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
-
+/** 初始化options选项，注意先后顺序 */
 export function initState (vm: Component) {
   vm._watchers = []
   const opts = vm.$options
+  /** 处理props */
   if (opts.props) initProps(vm, opts.props)
+  /** 处理methods方法 */
   if (opts.methods) initMethods(vm, opts.methods)
+  /** 初始化data */
   if (opts.data) {
     initData(vm)
   } else {
     observe(vm._data = {}, true /* asRootData */)
   }
+  /** 初始化computed */
   if (opts.computed) initComputed(vm, opts.computed)
+  /** 初始化watch */
   if (opts.watch && opts.watch !== nativeWatch) {
     initWatch(vm, opts.watch)
   }
 }
-
+/** 初始化props */
 function initProps (vm: Component, propsOptions: Object) {
   const propsData = vm.$options.propsData || {}
   const props = vm._props = {}
@@ -75,9 +80,11 @@ function initProps (vm: Component, propsOptions: Object) {
   }
   for (const key in propsOptions) {
     keys.push(key)
+    // 校验props
     const value = validateProp(key, propsOptions, propsData, vm)
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== 'production') {
+      // 判断是否是Vue保留字
       const hyphenatedKey = hyphenate(key)
       if (isReservedAttribute(hyphenatedKey) ||
           config.isReservedAttr(hyphenatedKey)) {
@@ -86,6 +93,7 @@ function initProps (vm: Component, propsOptions: Object) {
           vm
         )
       }
+      // 响应式prop，并在开发环境拦截setter设置器，修改props控制台打印警告
       defineReactive(props, key, value, () => {
         if (!isRoot && !isUpdatingChildComponent) {
           warn(
@@ -98,6 +106,7 @@ function initProps (vm: Component, propsOptions: Object) {
         }
       })
     } else {
+      // 生产环境直接响应式数据
       defineReactive(props, key, value)
     }
     // static props are already proxied on the component's prototype
@@ -261,11 +270,12 @@ function createGetterInvoker(fn) {
     return fn.call(this, this)
   }
 }
-
+/** 初始化方法 */
 function initMethods (vm: Component, methods: Object) {
   const props = vm.$options.props
   for (const key in methods) {
     if (process.env.NODE_ENV !== 'production') {
+      // 开发环境，判断methods中的值类型是否是方法，控制台打印警告
       if (typeof methods[key] !== 'function') {
         warn(
           `Method "${key}" has type "${typeof methods[key]}" in the component definition. ` +
@@ -273,12 +283,14 @@ function initMethods (vm: Component, methods: Object) {
           vm
         )
       }
+      // 和props冲突
       if (props && hasOwn(props, key)) {
         warn(
           `Method "${key}" has already been defined as a prop.`,
           vm
         )
       }
+      // 是否是保留字
       if ((key in vm) && isReserved(key)) {
         warn(
           `Method "${key}" conflicts with an existing Vue instance method. ` +
@@ -286,6 +298,7 @@ function initMethods (vm: Component, methods: Object) {
         )
       }
     }
+    // 设置空函数，绑定当前实例为this
     vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
   }
 }

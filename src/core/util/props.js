@@ -17,39 +17,47 @@ type PropOptions = {
   required: ?boolean,
   validator: ?Function
 };
-
+/** 校验传进来的props */
 export function validateProp (
-  key: string,
-  propOptions: Object,
-  propsData: Object,
-  vm?: Component
+  key: string, // props字段名
+  propOptions: Object, // props配置项
+  propsData: Object, // 传进来的props对象
+  vm?: Component // 当前实例
 ): any {
+  // 当前prop配置项
   const prop = propOptions[key]
+  // 判断父组件有没有传
   const absent = !hasOwn(propsData, key)
   let value = propsData[key]
   // boolean casting
+  // 优先判断Boolean是否命中props类型声明
   const booleanIndex = getTypeIndex(Boolean, prop.type)
   if (booleanIndex > -1) {
+    // 没传也没有设置默认值
     if (absent && !hasOwn(prop, 'default')) {
       value = false
     } else if (value === '' || value === hyphenate(key)) {
       // only cast empty string / same name to boolean if
       // boolean has higher priority
       const stringIndex = getTypeIndex(String, prop.type)
+      // 比较是Boolean优先级和String类型优先级
       if (stringIndex < 0 || booleanIndex < stringIndex) {
         value = true
       }
     }
   }
   // check default value
+  // prop没传时，设置默认值
   if (value === undefined) {
+    // 获取默认值
     value = getPropDefaultValue(vm, prop, key)
     // since the default value is a fresh copy,
     // make sure to observe it.
+    // 响应式默认值
     const prevShouldObserve = shouldObserve
-    toggleObserving(true)
+    toggleObserving(true) // 开启响应式
     observe(value)
-    toggleObserving(prevShouldObserve)
+    toggleObserving(prevShouldObserve) // 恢复响应式
   }
   if (
     process.env.NODE_ENV !== 'production' &&
@@ -63,6 +71,7 @@ export function validateProp (
 
 /**
  * Get the default value of a prop.
+ * 获取props默认值
  */
 function getPropDefaultValue (vm: ?Component, prop: PropOptions, key: string): any {
   // no default, return undefined
@@ -71,6 +80,7 @@ function getPropDefaultValue (vm: ?Component, prop: PropOptions, key: string): a
   }
   const def = prop.default
   // warn against non-factory defaults for Object & Array
+  // 复杂类型必须通过工厂函数返回
   if (process.env.NODE_ENV !== 'production' && isObject(def)) {
     warn(
       'Invalid default value for prop "' + key + '": ' +
