@@ -5,6 +5,7 @@ import { toArray } from '../util/index'
 export function initUse (Vue: GlobalAPI) {
   Vue.use = function (plugin: Function | Object) {
     const installedPlugins = (this._installedPlugins || (this._installedPlugins = []))
+    // 避免重复注册
     if (installedPlugins.indexOf(plugin) > -1) {
       return this
     }

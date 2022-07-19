@@ -3,6 +3,7 @@ import { stateMixin } from './state'
 import { renderMixin } from './render'
 import { eventsMixin } from './events'
 import { lifecycleMixin } from './lifecycle'
+// 控制台警告方法
 import { warn } from '../util/index'
 /** Vue构造函数 */
 function Vue (options) {
