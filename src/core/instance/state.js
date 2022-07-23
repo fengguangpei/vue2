@@ -20,13 +20,13 @@ import {
   hasOwn, // 是否有自身属性
   hyphenate, // 驼峰转kebab-case
   isReserved, // 是否是保留字
-  handleError,
+  handleError, // 统一错误处理函数
   nativeWatch,
   validateProp, // 校验props
   isPlainObject,  // 纯对象，而不是Set、Map等Object
   isServerRendering,  // 是否是服务端渲染
   isReservedAttribute, // 是否是保留属性
-  invokeWithErrorHandling
+  invokeWithErrorHandling // 封装函数的执行，监听错误
 } from '../util/index'
 
 const sharedPropertyDefinition = {

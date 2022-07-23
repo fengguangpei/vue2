@@ -34,19 +34,22 @@ export function initLifecycle (vm: Component) {
 
   // locate first non-abstract parent
   let parent = options.parent
+  // 把当前实例添加到父组件的$children数组
   if (parent && !options.abstract) {
     while (parent.$options.abstract && parent.$parent) {
       parent = parent.$parent
     }
     parent.$children.push(vm)
   }
-
+  // 父组件
   vm.$parent = parent
+  // 根组件
   vm.$root = parent ? parent.$root : vm
-
+  // 子组件列表
   vm.$children = []
+  // ref列表
   vm.$refs = {}
-
+  // 标记状态字段
   vm._watcher = null
   vm._inactive = null
   vm._directInactive = false
@@ -54,7 +57,7 @@ export function initLifecycle (vm: Component) {
   vm._isDestroyed = false
   vm._isBeingDestroyed = false
 }
-
+// 原型上挂载声明周期函数
 export function lifecycleMixin (Vue: Class<Component>) {
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
