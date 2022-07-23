@@ -19,21 +19,21 @@ export default class Dep {
     this.id = uid++
     this.subs = []
   }
-
+  // 添加依赖
   addSub (sub: Watcher) {
     this.subs.push(sub)
   }
-
+  // 删除依赖
   removeSub (sub: Watcher) {
     remove(this.subs, sub)
   }
-
+  // 让watcher知道自己被谁作为依赖收集了
   depend () {
     if (Dep.target) {
       Dep.target.addDep(this)
     }
   }
-
+  // 通知更新
   notify () {
     // stabilize the subscriber list first
     const subs = this.subs.slice()
@@ -53,13 +53,14 @@ export default class Dep {
 // This is globally unique because only one watcher
 // can be evaluated at a time.
 Dep.target = null
+// 被收集的依赖的栈
 const targetStack = []
-
+// 设置当前被收集的依赖-watcher
 export function pushTarget (target: ?Watcher) {
   targetStack.push(target)
   Dep.target = target
 }
-
+// 当前被收集的依赖watcher出栈
 export function popTarget () {
   targetStack.pop()
   Dep.target = targetStack[targetStack.length - 1]

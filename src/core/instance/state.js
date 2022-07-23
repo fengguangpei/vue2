@@ -68,11 +68,13 @@ export function initState (vm: Component) {
 }
 /** 初始化props */
 function initProps (vm: Component, propsOptions: Object) {
+  // 父组件绑定的props，模板编译的时候收集
   const propsData = vm.$options.propsData || {}
   const props = vm._props = {}
   // cache prop keys so that future props updates can iterate using Array
   // instead of dynamic object key enumeration.
   const keys = vm.$options._propKeys = []
+  // 是否是根组件
   const isRoot = !vm.$parent
   // root instance props should be converted
   if (!isRoot) {
@@ -341,7 +343,7 @@ function createWatcher (
   }
   return vm.$watch(expOrFn, handler, options)
 }
-
+// 数据相关的实例属性\实例方法
 export function stateMixin (Vue: Class<Component>) {
   // flow somehow has problems with directly declared definition object
   // when using Object.defineProperty, so we have to procedurally build up

@@ -2,18 +2,18 @@
 
 import Dep from './dep'
 import VNode from '../vdom/vnode'
-import { arrayMethods } from './array'
+import { arrayMethods } from './array' // Array.prototype原型方法的代理原型,扮演中间人的角色
 import {
   def,
   warn,
   hasOwn,
-  hasProto,
+  hasProto, // 是否可以通过__proto__获取原型
   isObject,
   isPlainObject,
   isPrimitive,
   isUndef,
   isValidArrayIndex,
-  isServerRendering
+  isServerRendering // 判断是否是服务端渲染
 } from '../util/index'
 
 const arrayKeys = Object.getOwnPropertyNames(arrayMethods)
@@ -44,14 +44,18 @@ export class Observer {
     this.dep = new Dep()
     this.vmCount = 0
     def(value, '__ob__', this)
+    // 处理数组的响应式
     if (Array.isArray(value)) {
+      // 是否可以通过__proto__获取原型
       if (hasProto) {
         protoAugment(value, arrayMethods)
       } else {
         copyAugment(value, arrayMethods, arrayKeys)
       }
+      // 递归遍历数组
       this.observeArray(value)
     } else {
+      // 处理对象的响应式
       this.walk(value)
     }
   }
@@ -84,6 +88,7 @@ export class Observer {
  * Augment a target Object or Array by intercepting
  * the prototype chain using __proto__
  */
+// 设置数组的中间代理对象原型
 function protoAugment (target, src: Object) {
   /* eslint-disable no-proto */
   target.__proto__ = src
@@ -95,6 +100,7 @@ function protoAugment (target, src: Object) {
  * hidden properties.
  */
 /* istanbul ignore next */
+// 不支持__proto__的环境, 则直接拷贝到数组实例上
 function copyAugment (target: Object, src: Object, keys: Array<string>) {
   for (let i = 0, l = keys.length; i < l; i++) {
     const key = keys[i]
@@ -113,6 +119,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
     return
   }
   let ob: Observer | void
+  // 是否已处理过响应式
   if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
     ob = value.__ob__
   } else if (
@@ -151,11 +158,16 @@ export function defineReactive (
   // cater for pre-defined getter/setters
   const getter = property && property.get
   const setter = property && property.set
+  // 处理没有传入具体的值
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key]
   }
-
+  // ⚠️
+  // 大部分情况shallow默认是false的，即默认递归observe。
+  // - 当val是数组时，childOb被用来向当前watcher收集依赖
+  // - 当val是普通对象时，set/del函数也会用childOb来通知val的属性添加/删除
   let childOb = !shallow && observe(val)
+  // 监听get, 收集依赖
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
@@ -163,6 +175,11 @@ export function defineReactive (
       const value = getter ? getter.call(obj) : val
       if (Dep.target) {
         dep.depend()
+        // 现在问题是为什么要依赖 childOb 呢？
+        // 考虑到如果 value 是数组，那么 value 的 push/shift 之类的操作，
+        // 是触发不了下面的 setter 的，即 dep.depend 在这种情况不会被调用。
+        // 此时，childOb 即value这个数组对应的 ob，数组的操作会通知到childOb，
+        // 所以可以替代 dep 来通知 watcher。
         if (childOb) {
           childOb.dep.depend()
           if (Array.isArray(value)) {
@@ -172,9 +189,11 @@ export function defineReactive (
       }
       return value
     },
+    // 
     set: function reactiveSetter (newVal) {
       const value = getter ? getter.call(obj) : val
       /* eslint-disable no-self-compare */
+      // 排除NaN
       if (newVal === value || (newVal !== newVal && value !== value)) {
         return
       }
@@ -184,6 +203,7 @@ export function defineReactive (
         customSetter()
       }
       // #7981: for accessor properties without setter
+      // 访问器属性没有setter
       if (getter && !setter) return
       if (setter) {
         setter.call(obj, newVal)
@@ -191,6 +211,7 @@ export function defineReactive (
         val = newVal
       }
       childOb = !shallow && observe(newVal)
+      // 触发依赖更新
       dep.notify()
     }
   })
