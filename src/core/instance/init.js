@@ -12,10 +12,10 @@ import { extend, mergeOptions, formatComponentName } from '../util/index'
 
 let uid = 0
 /** Vue构造函数初始化函数 */
-export function initMixin (Vue: Class<Component>) {
-  Vue.prototype._init = function (options?: Object) {
+export function initMixin (Vue) {
+  Vue.prototype._init = function (options) {
     // 当前实例
-    const vm: Component = this
+    const vm = this
     // a uid
     vm._uid = uid++
 
@@ -31,11 +31,13 @@ export function initMixin (Vue: Class<Component>) {
     vm._isVue = true
     // merge options
     if (options && options._isComponent) {
+      // 普通组件选项合并
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
       initInternalComponent(vm, options)
     } else {
+      // 根组件选项合并
       vm.$options = mergeOptions(
         resolveConstructorOptions(vm.constructor),
         options || {},

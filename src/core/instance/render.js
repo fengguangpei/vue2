@@ -112,6 +112,7 @@ export function renderMixin (Vue: Class<Component>) {
       vnode = vnode[0]
     }
     // return empty vnode in case the render function errored out
+    // 不允许有多个根节点
     if (!(vnode instanceof VNode)) {
       if (process.env.NODE_ENV !== 'production' && Array.isArray(vnode)) {
         warn(
