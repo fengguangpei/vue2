@@ -10,7 +10,7 @@ import {
   isTrue,
   isPlainObject
 } from 'shared/util'
-
+// 创建一个有缓存功能的函数名格式化函数
 const normalizeEvent = cached((name: string): {
   name: string,
   once: boolean,
@@ -49,7 +49,7 @@ export function createFnInvoker (fns: Function | Array<Function>, vm: ?Component
   invoker.fns = fns
   return invoker
 }
-
+// 利用父组件绑定的事件更新本地事件
 export function updateListeners (
   on: Object,
   oldOn: Object,
@@ -68,6 +68,7 @@ export function updateListeners (
       cur = def.handler
       event.params = def.params
     }
+    // 没有绑定有效的方法名
     if (isUndef(cur)) {
       process.env.NODE_ENV !== 'production' && warn(
         `Invalid handler for event "${event.name}": got ` + String(cur),

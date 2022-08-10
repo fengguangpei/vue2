@@ -20,13 +20,13 @@ import {
   hasOwn, // 是否有自身属性
   hyphenate, // 驼峰转kebab-case
   isReserved, // 是否是保留字
-  handleError,
+  handleError, // 统一错误处理函数
   nativeWatch,
   validateProp, // 校验props
   isPlainObject,  // 纯对象，而不是Set、Map等Object
   isServerRendering,  // 是否是服务端渲染
   isReservedAttribute, // 是否是保留属性
-  invokeWithErrorHandling
+  invokeWithErrorHandling // 封装函数的执行，监听错误
 } from '../util/index'
 
 const sharedPropertyDefinition = {
@@ -68,11 +68,13 @@ export function initState (vm: Component) {
 }
 /** 初始化props */
 function initProps (vm: Component, propsOptions: Object) {
+  // 父组件绑定的props，模板编译的时候收集
   const propsData = vm.$options.propsData || {}
   const props = vm._props = {}
   // cache prop keys so that future props updates can iterate using Array
   // instead of dynamic object key enumeration.
   const keys = vm.$options._propKeys = []
+  // 是否是根组件
   const isRoot = !vm.$parent
   // root instance props should be converted
   if (!isRoot) {
@@ -341,7 +343,7 @@ function createWatcher (
   }
   return vm.$watch(expOrFn, handler, options)
 }
-
+// 数据相关的实例属性\实例方法
 export function stateMixin (Vue: Class<Component>) {
   // flow somehow has problems with directly declared definition object
   // when using Object.defineProperty, so we have to procedurally build up

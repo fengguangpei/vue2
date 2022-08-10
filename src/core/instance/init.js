@@ -52,13 +52,21 @@ export function initMixin (Vue) {
     }
     // expose real self
     vm._self = vm
+    // 声明周期相关
     initLifecycle(vm)
+    // 事件处理相关
     initEvents(vm)
+    // render相关
     initRender(vm)
+    // 调用beforeCreate钩子函数
     callHook(vm, 'beforeCreate')
+    // 初始化依赖注入
     initInjections(vm) // resolve injections before data/props
+    // 初始化数据
     initState(vm)
+    // 初始化依赖注入
     initProvide(vm) // resolve provide after data/props
+    // 调用created钩子函数
     callHook(vm, 'created')
 
     /* istanbul ignore if */
