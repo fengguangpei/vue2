@@ -25,6 +25,7 @@ const ALWAYS_NORMALIZE = 2
 
 // wrapper function for providing a more flexible interface
 // without getting yelled at by flow
+// _createElement函数的封装，接收的参数更加灵活
 export function createElement (
   context: Component,
   tag: any,
@@ -43,14 +44,15 @@ export function createElement (
   }
   return _createElement(context, tag, data, children, normalizationType)
 }
-
+// 创建VNode的函数
 export function _createElement (
-  context: Component,
-  tag?: string | Class<Component> | Function | Object,
-  data?: VNodeData,
-  children?: any,
+  context: Component, // 执行上下文
+  tag?: string | Class<Component> | Function | Object, // 标签、组件
+  data?: VNodeData, // VNode数据
+  children?: any, // 后代节点
   normalizationType?: number
 ): VNode | Array<VNode> {
+  // 判断data是否响应式的
   if (isDef(data) && isDef((data: any).__ob__)) {
     process.env.NODE_ENV !== 'production' && warn(
       `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
@@ -59,15 +61,18 @@ export function _createElement (
     )
     return createEmptyVNode()
   }
+  // 处理ul的子节点只能是li这种情况
   // object syntax in v-bind
   if (isDef(data) && isDef(data.is)) {
     tag = data.is
   }
+  // 创建空节点
   if (!tag) {
     // in case of component :is set to falsy value
     return createEmptyVNode()
   }
   // warn against non-primitive key
+  // 绑定的key不能是非原始类型
   if (process.env.NODE_ENV !== 'production' &&
     isDef(data) && isDef(data.key) && !isPrimitive(data.key)
   ) {
@@ -80,6 +85,7 @@ export function _createElement (
     }
   }
   // support single function children as default scoped slot
+  // 作用域插槽
   if (Array.isArray(children) &&
     typeof children[0] === 'function'
   ) {
@@ -87,9 +93,11 @@ export function _createElement (
     data.scopedSlots = { default: children[0] }
     children.length = 0
   }
+  // 格式化children，children可以有不同的形式
   if (normalizationType === ALWAYS_NORMALIZE) {
     children = normalizeChildren(children)
-  } else if (normalizationType === SIMPLE_NORMALIZE) {
+  }
+  else if (normalizationType === SIMPLE_NORMALIZE) {
     children = simpleNormalizeChildren(children)
   }
   let vnode, ns
@@ -120,7 +128,8 @@ export function _createElement (
         undefined, undefined, context
       )
     }
-  } else {
+  }
+  else {
     // direct component options / constructor
     vnode = createComponent(tag, data, context, children)
   }

@@ -7,16 +7,18 @@ import { mountComponent } from 'core/instance/lifecycle'
 import { devtools, inBrowser } from 'core/util/index'
 
 import {
-  query,
+  query,  // 根据选择器获取元素
   mustUseProp,
-  isReservedTag,
-  isReservedAttr,
+  isReservedTag, // 是否是原生保留标签
+  isReservedAttr, // 是否是原生保留属性
   getTagNamespace,
   isUnknownElement
 } from 'web/util/index'
 
 import { patch } from './patch'
+// Vue内置指令
 import platformDirectives from './directives/index'
+// Vue内置组件
 import platformComponents from './components/index'
 
 // install platform specific utils
@@ -36,7 +38,7 @@ Vue.prototype.__patch__ = inBrowser ? patch : noop
 // public mount method
 Vue.prototype.$mount = function (
   el?: string | Element,
-  hydrating?: boolean
+  hydrating?: boolean // 这个参数和服务端渲染相关
 ): Component {
   el = el && inBrowser ? query(el) : undefined
   return mountComponent(this, el, hydrating)

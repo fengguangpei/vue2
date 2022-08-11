@@ -7,7 +7,7 @@ import {
   handleError,
   defineReactive
 } from '../util/index'
-
+// 虚拟Node生成函数
 import { createElement } from '../vdom/create-element'
 import { installRenderHelpers } from './render-helpers/index'
 import { resolveSlots } from './render-helpers/resolve-slots'
@@ -28,9 +28,11 @@ export function initRender (vm: Component) {
   // so that we get proper render context inside it.
   // args order: tag, data, children, normalizationType, alwaysNormalize
   // internal version is used by render functions compiled from templates
+  // 这个render函数是给模版编译的render函数调用
   vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false)
   // normalization is always applied for the public version, used in
   // user-written render functions.
+  // 这个render函数是给我们手写的render函数调用的
   vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
 
   // $attrs & $listeners are exposed for easier HOC creation.
@@ -67,7 +69,7 @@ export function renderMixin (Vue: Class<Component>) {
   Vue.prototype.$nextTick = function (fn: Function) {
     return nextTick(fn, this)
   }
-
+  // 静态render方法，把当前实例渲染成VNode
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
     const { render, _parentVnode } = vm.$options
@@ -90,6 +92,11 @@ export function renderMixin (Vue: Class<Component>) {
       // separately from one another. Nested component's render fns are called
       // when parent component is patched.
       currentRenderingInstance = vm
+      /**
+       * 执行render函数，生成虚拟DOM
+       * vm._renderProxy，render函数执行上下文
+       * vm.$createElement，我们平时写render函数时接收的参数，
+       */
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)

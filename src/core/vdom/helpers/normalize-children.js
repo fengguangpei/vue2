@@ -1,5 +1,5 @@
 /* @flow */
-
+// 规范渲染函数的childrens
 import VNode, { createTextVNode } from 'core/vdom/vnode'
 import { isFalse, isTrue, isDef, isUndef, isPrimitive } from 'shared/util'
 
@@ -10,6 +10,7 @@ import { isFalse, isTrue, isDef, isUndef, isPrimitive } from 'shared/util'
 // generated render function is guaranteed to return Array<VNode>. There are
 // two cases where extra normalization is needed:
 
+// 处理函数式组件作为子组件的情况
 // 1. When the children contains components - because a functional component
 // may return an Array instead of a single root. In this case, just a simple
 // normalization is needed - if any child is an Array, we flatten the whole
@@ -35,24 +36,25 @@ export function normalizeChildren (children: any): ?Array<VNode> {
       ? normalizeArrayChildren(children)
       : undefined
 }
-
+// 是否是文本节点
 function isTextNode (node): boolean {
   return isDef(node) && isDef(node.text) && isFalse(node.isComment)
 }
-
+// 处理v-slot或者v-for嵌套数组的情况
 function normalizeArrayChildren (children: any, nestedIndex?: string): Array<VNode> {
   const res = []
   let i, c, lastIndex, last
   for (i = 0; i < children.length; i++) {
-    c = children[i]
+    c = children[i] // 当前节点
     if (isUndef(c) || typeof c === 'boolean') continue
     lastIndex = res.length - 1
-    last = res[lastIndex]
+    last = res[lastIndex] // 规范好的最后一个节点
     //  nested
     if (Array.isArray(c)) {
       if (c.length > 0) {
         c = normalizeArrayChildren(c, `${nestedIndex || ''}_${i}`)
         // merge adjacent text nodes
+        // 如果遇到两个连续的text节点，则把他们合并成一个
         if (isTextNode(c[0]) && isTextNode(last)) {
           res[lastIndex] = createTextVNode(last.text + (c[0]: any).text)
           c.shift()

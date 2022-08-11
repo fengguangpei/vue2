@@ -4,6 +4,7 @@ import { makeMap } from 'shared/util'
 
 // these are reserved for web because they are directly compiled away
 // during template compilation
+// 是否是原生保留属性
 export const isReservedAttr = makeMap('style,class')
 
 // attributes that should be using props for binding

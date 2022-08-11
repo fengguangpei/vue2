@@ -1,13 +1,21 @@
 /* @flow */
-
+// 全局配置比如Vue.config
 import config from '../config'
+// Vue.use
 import { initUse } from './use'
+// Vue.mixin
 import { initMixin } from './mixin'
+// Vue.extend
 import { initExtend } from './extend'
+// Vue.component、Vue.directive、Vue.filter
 import { initAssetRegisters } from './assets'
+// Vue.set、Vue.delete
 import { set, del } from '../observer/index'
+// [component, directive, filter]
 import { ASSET_TYPES } from 'shared/constants'
+// keepAlive内置组件
 import builtInComponents from '../components/index'
+// Vue.observable
 import { observe } from 'core/observer/index'
 
 import {
@@ -22,6 +30,7 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   // config
   const configDef = {}
   configDef.get = () => config
+  // 开发环境，拦截config的设置，打印警告
   if (process.env.NODE_ENV !== 'production') {
     configDef.set = () => {
       warn(
@@ -34,6 +43,7 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   // exposed util methods.
   // NOTE: these are not considered part of the public API - avoid relying on
   // them unless you are aware of the risk.
+  // 内部代码使用的工具函数
   Vue.util = {
     warn,
     extend,
@@ -52,6 +62,7 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   }
   // 组件、指令、过滤器
   Vue.options = Object.create(null)
+  // ASSET_TYPES: component、directive、filter
   ASSET_TYPES.forEach(type => {
     Vue.options[type + 's'] = Object.create(null)
   })

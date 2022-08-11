@@ -70,7 +70,10 @@ function createKeyToOldIdx (children, beginIdx, endIdx) {
 export function createPatchFunction (backend) {
   let i, j
   const cbs = {}
-
+  /**
+   * modules: 钩子函数的实现
+   * nodeOps: DOM节点操作方法
+   */
   const { modules, nodeOps } = backend
 
   for (i = 0; i < hooks.length; ++i) {

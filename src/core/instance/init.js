@@ -30,14 +30,15 @@ export function initMixin (Vue) {
     // a flag to avoid this being observed
     vm._isVue = true
     // merge options
+    debugger
     if (options && options._isComponent) {
-      // 普通组件选项合并
+      // 虚拟DOM渲染时，遇到自定义组件没法通过createElement()创建节点，必须实例化该组件，此时走这里
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
       initInternalComponent(vm, options)
     } else {
-      // 根组件选项合并
+      // new Vue()的时候走这里
       vm.$options = mergeOptions(
         resolveConstructorOptions(vm.constructor),
         options || {},
@@ -90,7 +91,9 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   opts._parentVnode = parentVnode
 
   const vnodeComponentOptions = parentVnode.componentOptions
+  // 父组件绑定的值
   opts.propsData = vnodeComponentOptions.propsData
+  // 父组件设置的事件监听函数
   opts._parentListeners = vnodeComponentOptions.listeners
   opts._renderChildren = vnodeComponentOptions.children
   opts._componentTag = vnodeComponentOptions.tag

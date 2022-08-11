@@ -48,6 +48,7 @@ export default class Watcher {
     expOrFn: string | Function,
     cb: Function,
     options?: ?Object,
+    // 是否是组件更新的watcher实例
     isRenderWatcher?: boolean
   ) {
     this.vm = vm
@@ -55,7 +56,7 @@ export default class Watcher {
       vm._watcher = this
     }
     vm._watchers.push(this)
-    // options
+    // 处理options选项赋值
     if (options) {
       this.deep = !!options.deep
       this.user = !!options.user
@@ -63,6 +64,7 @@ export default class Watcher {
       this.sync = !!options.sync
       this.before = options.before
     } else {
+      // 默认值都是false
       this.deep = this.user = this.lazy = this.sync = false
     }
     this.cb = cb

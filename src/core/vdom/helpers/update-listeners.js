@@ -74,7 +74,8 @@ export function updateListeners (
         `Invalid handler for event "${event.name}": got ` + String(cur),
         vm
       )
-    } else if (isUndef(old)) {
+    }
+    else if (isUndef(old)) {
       if (isUndef(cur.fns)) {
         cur = on[name] = createFnInvoker(cur, vm)
       }
@@ -87,6 +88,7 @@ export function updateListeners (
       on[name] = old
     }
   }
+  // 根据最新的绑定，删除旧的事件
   for (name in oldOn) {
     if (isUndef(on[name])) {
       event = normalizeEvent(name)

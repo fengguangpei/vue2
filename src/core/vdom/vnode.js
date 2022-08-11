@@ -70,14 +70,14 @@ export default class VNode {
     return this.componentInstance
   }
 }
-
+// 创建空的虚拟Node
 export const createEmptyVNode = (text: string = '') => {
   const node = new VNode()
   node.text = text
   node.isComment = true
   return node
 }
-
+// 创建文本虚拟Node
 export function createTextVNode (val: string | number) {
   return new VNode(undefined, undefined, undefined, String(val))
 }
@@ -86,6 +86,7 @@ export function createTextVNode (val: string | number) {
 // used for static nodes and slot nodes because they may be reused across
 // multiple renders, cloning them avoids errors when DOM manipulations rely
 // on their elm reference.
+// 克隆节点
 export function cloneVNode (vnode: VNode): VNode {
   const cloned = new VNode(
     vnode.tag,

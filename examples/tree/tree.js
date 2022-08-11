@@ -65,7 +65,7 @@ Vue.component('item', {
     }
   }
 })
-
+Vue.extend({})
 // boot up the demo
 var demo = new Vue({
   el: '#demo',
