@@ -33,6 +33,7 @@ import {
 } from 'weex/runtime/recycle-list/render-component-template'
 
 // inline hooks to be invoked on component VNodes during patch
+// vue虚拟DOM依赖的开源库的hook函数
 const componentVNodeHooks = {
   init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
     if (
@@ -108,11 +109,12 @@ export function createComponent (
   if (isUndef(Ctor)) {
     return
   }
-
+  // Vue构造函数
   const baseCtor = context.$options._base
 
   // plain options object: turn it into a constructor
   if (isObject(Ctor)) {
+    // Vue.extend(), 返回一个新的构造函数，Vue的子类，实例化它就可以得到一个Vue实例
     Ctor = baseCtor.extend(Ctor)
   }
 
@@ -151,6 +153,7 @@ export function createComponent (
   resolveConstructorOptions(Ctor)
 
   // transform component v-model data into props & events
+  // v-model实现
   if (isDef(data.model)) {
     transformModel(Ctor.options, data)
   }
@@ -186,6 +189,7 @@ export function createComponent (
   installComponentHooks(data)
 
   // return a placeholder vnode
+  // 实例化VNode
   const name = Ctor.options.name || tag
   const vnode = new VNode(
     `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
@@ -249,6 +253,7 @@ function mergeHook (f1: any, f2: any): Function {
 
 // transform component v-model info (value and callback) into
 // prop and event handler respectively.
+// v-model的实现
 function transformModel (options, data: any) {
   const prop = (options.model && options.model.prop) || 'value'
   const event = (options.model && options.model.event) || 'input'

@@ -101,6 +101,7 @@ export function _createElement (
     children = simpleNormalizeChildren(children)
   }
   let vnode, ns
+  // 字符串
   if (typeof tag === 'string') {
     let Ctor
     ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag)
@@ -129,6 +130,7 @@ export function _createElement (
       )
     }
   }
+  // 组件选项
   else {
     // direct component options / constructor
     vnode = createComponent(tag, data, context, children)

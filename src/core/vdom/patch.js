@@ -71,7 +71,7 @@ export function createPatchFunction (backend) {
   let i, j
   const cbs = {}
   /**
-   * modules: 钩子函数的实现
+   * modules: 不同平台的模块
    * nodeOps: DOM节点操作方法
    */
   const { modules, nodeOps } = backend
@@ -699,8 +699,12 @@ export function createPatchFunction (backend) {
       return node.nodeType === (vnode.isComment ? 8 : 3)
     }
   }
-
+  /**
+   * hydrating: 服务端渲染用到
+   * removeOnly: transition group用到
+   */
   return function patch (oldVnode, vnode, hydrating, removeOnly) {
+    // 如果没有新的虚拟节点，则销毁
     if (isUndef(vnode)) {
       if (isDef(oldVnode)) invokeDestroyHook(oldVnode)
       return
