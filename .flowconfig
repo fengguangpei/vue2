@@ -4,7 +4,7 @@
 .*/scripts/.*
 .*/examples/.*
 .*/benchmarks/.*
-
+.*/src/.*
 [include]
 
 [libs]

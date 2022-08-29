@@ -30,7 +30,6 @@ export function initMixin (Vue) {
     // a flag to avoid this being observed
     vm._isVue = true
     // merge options
-    debugger
     if (options && options._isComponent) {
       // 虚拟DOM渲染时，遇到自定义组件没法通过createElement()创建节点，必须实例化该组件，此时走这里
       // optimize internal component instantiation
