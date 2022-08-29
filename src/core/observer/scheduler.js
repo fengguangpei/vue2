@@ -163,8 +163,10 @@ function callActivatedHooks (queue) {
  */
 export function queueWatcher (watcher: Watcher) {
   const id = watcher.id
+  // 避免重复添加相同的watcher实例
   if (has[id] == null) {
     has[id] = true
+    // 还没执行队列，直接添加watcher
     if (!flushing) {
       queue.push(watcher)
     } else {

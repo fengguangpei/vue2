@@ -14,7 +14,7 @@ type CacheEntryMap = { [key: string]: ?CacheEntry };
 function getComponentName (opts: ?VNodeComponentOptions): ?string {
   return opts && (opts.Ctor.options.name || opts.tag)
 }
-
+// 是否匹配缓存，include、exclude有三种指定方式：字符串、正则表达式、数组
 function matches (pattern: string | RegExp | Array<string>, name: string): boolean {
   if (Array.isArray(pattern)) {
     return pattern.indexOf(name) > -1
@@ -58,6 +58,7 @@ const patternTypes: Array<Function> = [String, RegExp, Array]
 
 export default {
   name: 'keep-alive',
+  // 声明抽象组件
   abstract: true,
 
   props: {
@@ -67,6 +68,7 @@ export default {
   },
 
   methods: {
+    // 新增缓存
     cacheVNode() {
       const { cache, keys, vnodeToCache, keyToCache } = this
       if (vnodeToCache) {
@@ -78,6 +80,7 @@ export default {
         }
         keys.push(keyToCache)
         // prune oldest entry
+        // 超过最大缓存限制，删除第一个
         if (this.max && keys.length > parseInt(this.max)) {
           pruneCacheEntry(cache, keys[0], keys, this._vnode)
         }
@@ -125,21 +128,27 @@ export default {
         // excluded
         (exclude && name && matches(exclude, name))
       ) {
+        // 不需要缓存的直接返回
         return vnode
       }
 
       const { cache, keys } = this
+      // 处理key的唯一性
       const key: ?string = vnode.key == null
         // same constructor may get registered as different local components
         // so cid alone is not enough (#3269)
         ? componentOptions.Ctor.cid + (componentOptions.tag ? `::${componentOptions.tag}` : '')
         : vnode.key
+      // 已有缓存
       if (cache[key]) {
         vnode.componentInstance = cache[key].componentInstance
         // make current key freshest
+        // 调整缓存的key的顺序到最后一个
         remove(keys, key)
         keys.push(key)
-      } else {
+      }
+      // 新增缓存，新增的时机延迟到updated中
+      else {
         // delay setting the cache until update
         this.vnodeToCache = vnode
         this.keyToCache = key

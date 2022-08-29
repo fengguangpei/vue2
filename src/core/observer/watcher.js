@@ -178,6 +178,7 @@ export default class Watcher {
     } else if (this.sync) {
       this.run()
     } else {
+      // 把当前watcher添加到队列管理器中
       queueWatcher(this)
     }
   }

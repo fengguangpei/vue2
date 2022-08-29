@@ -29,6 +29,7 @@ export default class Dep {
   }
   // 让watcher知道自己被谁作为依赖收集了
   depend () {
+    // Dep.target是一个watcher实例
     if (Dep.target) {
       Dep.target.addDep(this)
     }

@@ -26,6 +26,8 @@ methodsToPatch.forEach(function (method) {
   const original = arrayProto[method] // Array.prototype上的原型方法
   def(arrayMethods, method, function mutator (...args) {
     const result = original.apply(this, args)
+    // Observer实例
+    // 原型方法只能通过实例调用，所以这里的this指向数组
     const ob = this.__ob__
     let inserted
     switch (method) {
@@ -40,6 +42,7 @@ methodsToPatch.forEach(function (method) {
     // 通过数组的方法新增的元素, 一样需要被响应式监听
     if (inserted) ob.observeArray(inserted)
     // notify change
+    // 数组的依赖是从Observer实例上获取的
     ob.dep.notify() // 触发更新
     // 返回结果
     return result

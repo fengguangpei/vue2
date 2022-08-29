@@ -41,8 +41,12 @@ export class Observer {
 
   constructor (value: any) {
     this.value = value
+    // 数组、对象的依赖实例在这里定义，对象属性的依赖实例在defineReactive中定义
+    // 对象的并不会用到
     this.dep = new Dep()
     this.vmCount = 0
+    // 给value新增一个__ob__属性，值为该value的Observer实例
+    // 相当于为value打上标记，表示它已经转化为响应式了，避免重复操作
     def(value, '__ob__', this)
     // 处理数组的响应式
     if (Array.isArray(value)) {
@@ -148,6 +152,7 @@ export function defineReactive (
   customSetter?: ?Function,
   shallow?: boolean
 ) {
+  // 对象属性的依赖实例
   const dep = new Dep()
   // 对象属性不可配置
   const property = Object.getOwnPropertyDescriptor(obj, key)
@@ -181,8 +186,10 @@ export function defineReactive (
         // 此时，childOb 即value这个数组对应的 ob，数组的操作会通知到childOb，
         // 所以可以替代 dep 来通知 watcher。
         if (childOb) {
+          // 数组的依赖收集也是在get中，因为递归数组优先
           childOb.dep.depend()
           if (Array.isArray(value)) {
+            // 嵌套数组，都会把引用当前这个属性的实例watcher收集为watcher
             dependArray(value)
           }
         }
@@ -294,6 +301,29 @@ export function del (target: Array<any> | Object, key: any) {
 /**
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
+ */
+/**
+ * 举个例子，
+ * data() {
+ *  return {
+ *    test: [
+ *       [],
+ *       []
+ *    ]
+ *  }
+ * }
+ * 在VUE2中，如果模版使用了test这个属性，那么不管test数组中的嵌套数组有没有被用到，都会把用到test属性的
+ * 组件实例对应的依赖收集为自己的依赖。这种情况下，执行test[0].push(3)原则上是不需要更新视图的，事实上却重新更新了视图。
+ * 这是VUE2响应式的一个缺陷
+ * 
+ * test: [
+ *  {
+ *    name: 'fenggp'
+ *  }
+ * ]
+ * 这种情况下只要没有引用到name属性，那么执行test[0].name = 'test'时不会更新视图，由此可见Object和Array的区别
+ * 
+ * VUE3解决了这个问题，只要模版中没有用到的，就不会被错误的收集依赖
  */
 function dependArray (value: Array<any>) {
   for (let e, i = 0, l = value.length; i < l; i++) {
