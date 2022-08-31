@@ -1,5 +1,12 @@
 /* @flow */
-
+/**
+ * watcher实现思路
+ * 第一步：所有的数据都已经是响应式的了
+ * 第二步：实例化watcher
+ * 第三步：把自己设置为被收集的依赖
+ * 第四步：模拟数据的读取，触发依赖收集，收集自己作为读到的数据的依赖
+ * 数据发生变化时，就会通知自己，执行回调callback
+ */
 import {
   warn,
   remove,
@@ -52,14 +59,16 @@ export default class Watcher {
     isRenderWatcher?: boolean
   ) {
     this.vm = vm
+    // 收集组件渲染的watcher
+    // $forceUpdate这个方法会用到
     if (isRenderWatcher) {
       vm._watcher = this
     }
     vm._watchers.push(this)
     // 处理options选项赋值
     if (options) {
-      this.deep = !!options.deep
-      this.user = !!options.user
+      this.deep = !!options.deep // 深度监听
+      this.user = !!options.user // 用户创建的watcher实例
       this.lazy = !!options.lazy
       this.sync = !!options.sync
       this.before = options.before
@@ -67,10 +76,12 @@ export default class Watcher {
       // 默认值都是false
       this.deep = this.user = this.lazy = this.sync = false
     }
+    // 响应监听回调
     this.cb = cb
     this.id = ++uid // uid for batching
     this.active = true
-    this.dirty = this.lazy // for lazy watchers
+    this.dirty = this.lazy // for lazy watchers computed计算属性缓存使用到
+    // 记录自己被哪些Dep实例收集
     this.deps = []
     this.newDeps = []
     this.depIds = new Set()
@@ -79,6 +90,7 @@ export default class Watcher {
       ? expOrFn.toString()
       : ''
     // parse expression for getter
+    // 生成访问器getter，后面调用它触发依赖收集
     if (typeof expOrFn === 'function') {
       this.getter = expOrFn
     } else {
@@ -102,6 +114,7 @@ export default class Watcher {
   /**
    * Evaluate the getter, and re-collect dependencies.
    */
+  // 读取监听的值，触发依赖收集
   get () {
     // 设置当前被收集的依赖，即当前这个watcher实例
     pushTarget(this)
@@ -174,6 +187,7 @@ export default class Watcher {
   update () {
     /* istanbul ignore else */
     if (this.lazy) {
+      // computed的缓存会用到，如果这个watcher是computed的，就把dirty设置为true，告诉计算属性有新值了
       this.dirty = true
     } else if (this.sync) {
       this.run()
@@ -241,6 +255,7 @@ export default class Watcher {
       if (!this.vm._isBeingDestroyed) {
         remove(this.vm._watchers, this)
       }
+      // 从收集自己作为依赖的Dep管理器中删除自己
       let i = this.deps.length
       while (i--) {
         this.deps[i].removeSub(this)

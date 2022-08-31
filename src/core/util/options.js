@@ -424,9 +424,11 @@ export function mergeOptions (
   // the result of another mergeOptions call.
   // Only merged options has the _base property.
   if (!child._base) {
+    // 递归合并extends
     if (child.extends) {
       parent = mergeOptions(parent, child.extends, vm)
     }
+    // 递归合并mixins
     if (child.mixins) {
       for (let i = 0, l = child.mixins.length; i < l; i++) {
         parent = mergeOptions(parent, child.mixins[i], vm)
@@ -458,11 +460,12 @@ export function mergeOptions (
  * This function is used because child instances need access
  * to assets defined in its ancestor chain.
  */
+// 查找filters、directive、components
 export function resolveAsset (
   options: Object,
-  type: string,
-  id: string,
-  warnMissing?: boolean
+  type: string, // 待查找的选项
+  id: string, // ID
+  warnMissing?: boolean // 找不到是否打印警告
 ): any {
   /* istanbul ignore if */
   if (typeof id !== 'string') {
@@ -470,12 +473,14 @@ export function resolveAsset (
   }
   const assets = options[type]
   // check local registration variations first
+  // 本地查找
   if (hasOwn(assets, id)) return assets[id]
   const camelizedId = camelize(id)
   if (hasOwn(assets, camelizedId)) return assets[camelizedId]
   const PascalCaseId = capitalize(camelizedId)
   if (hasOwn(assets, PascalCaseId)) return assets[PascalCaseId]
   // fallback to prototype chain
+  // 原型链查找
   const res = assets[id] || assets[camelizedId] || assets[PascalCaseId]
   if (process.env.NODE_ENV !== 'production' && warnMissing && !res) {
     warn(

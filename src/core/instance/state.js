@@ -186,6 +186,19 @@ export function getData (data: Function, vm: Component): any {
 
 const computedWatcherOptions = { lazy: true }
 // 初始化Computed
+/**
+ * 第一步：计算属性的getter会传给watch构造函数实例化一个watcher，并且watcher的实例属性dirty：true
+ * 第二步：计算属性的getter会被computedGetter #285行
+ * 第三步：模版使用计算属性时，会访问它的getter获取值，所以computedGetter会执行
+ * 第四步：computedGetter执行时,会判断dirty属性是否为true，为true则重新执行传给watch的getter，计算最新的值
+ *        。这个过程触发依赖的属性的依赖收集，把computed的watch收集为依赖
+ * 第五步：通知计算属性依赖的属性，把当前组件实例的watcher收集为依赖
+ * 第六步：计算属性的依赖的属性发生变化时，会通知依赖更新，就包括计算属性的watcher、组件的watcher
+ * 第七步：计算属性的watcher会把dirty设置为true，等待computed来取值
+ * 第八步：通知组件的watcher更新视图
+ * 第九步：更新视图过程中，会再次访问计算属性，为了获取其值，就会执行computedGetter函数，从而获取最新值
+ *        。如果没有用到就不会执行，从而实现缓存和惰性求值
+ */
 function initComputed (vm: Component, computed: Object) {
   // $flow-disable-line
   const watchers = vm._computedWatchers = Object.create(null)
@@ -195,6 +208,7 @@ function initComputed (vm: Component, computed: Object) {
   for (const key in computed) {
     const userDef = computed[key]
     const getter = typeof userDef === 'function' ? userDef : userDef.get
+    // 抛出警告，没有设置getter
     if (process.env.NODE_ENV !== 'production' && getter == null) {
       warn(
         `Getter is missing for computed property "${key}".`,
@@ -218,6 +232,7 @@ function initComputed (vm: Component, computed: Object) {
     // at instantiation here.
     /** 判断computed是否和其他选项冲突 */
     if (!(key in vm)) {
+      // 如果没有则调用为当前实例设置计算属性
       defineComputed(vm, key, userDef)
     } else if (process.env.NODE_ENV !== 'production') {
       if (key in vm.$data) {
@@ -230,7 +245,7 @@ function initComputed (vm: Component, computed: Object) {
     }
   }
 }
-
+// 为当前实例设置计算属性
 export function defineComputed (
   target: any,
   key: string,
@@ -239,7 +254,7 @@ export function defineComputed (
   const shouldCache = !isServerRendering()
   if (typeof userDef === 'function') {
     sharedPropertyDefinition.get = shouldCache
-      ? createComputedGetter(key)
+      ? createComputedGetter(key) // 创建一个具有缓存功能的getter
       : createGetterInvoker(userDef)
     sharedPropertyDefinition.set = noop
   } else {
@@ -250,6 +265,7 @@ export function defineComputed (
       : noop
     sharedPropertyDefinition.set = userDef.set || noop
   }
+  // 如果没有set设置器，则设置一个默认的设置器，拦截错误的设置
   if (process.env.NODE_ENV !== 'production' &&
       sharedPropertyDefinition.set === noop) {
     sharedPropertyDefinition.set = function () {
@@ -259,17 +275,40 @@ export function defineComputed (
       )
     }
   }
+  // sharedPropertyDefinition是一个默认属性描述符
+  /**
+   * {
+   *    enumerable: true,
+   *    configurable: true,
+   *    get
+   *    set
+   * }
+   * 模版使用
+   */
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
-
+// 为computed设置一个带缓存功能的getter
+// 模版使用到这个属性时，会通过get函数获取值，computed的get就是这里返回的computedGetter
 function createComputedGetter (key) {
   return function computedGetter () {
     const watcher = this._computedWatchers && this._computedWatchers[key]
     if (watcher) {
+      // dirty用来标记是否需要重新计算获取新值
       if (watcher.dirty) {
+        // 触发watcher重新计算获取值
+        // 获取值时，会执行getter的执行，访问computed依赖的属性
+        // 对应的属性会把computed对应的watch收集为依赖，
+        // 属性变化时触发更新
+        // 即把dirty属性设置为true，下次访问计算属性时就会重新计算
         watcher.evaluate()
       }
+      // 虚拟DOM渲染视图时，是放在一个watcher中执行的，并且这个watcher会被设置为
+      // 依赖，渲染视图过程中读到某个属性时就会触发这个属性的依赖收集，把渲染视图的那个
+      // watch收集为依赖。
+      // 计算属性不同的是，它会通知计算属性依赖的属性触发依赖收集，计算属性本身并不进行
+      // 依赖收集，所以计算属性依赖的属性发生变化时，会通知视图更新
       if (Dep.target) {
+        // 通知计算属性依赖的属性进行依赖收集，这里收集的代表组件的watcher
         watcher.depend()
       }
       return watcher.value
@@ -314,7 +353,7 @@ function initMethods (vm: Component, methods: Object) {
     vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
   }
 }
-
+/** 初始化watch */
 function initWatch (vm: Component, watch: Object) {
   for (const key in watch) {
     const handler = watch[key]
@@ -327,7 +366,7 @@ function initWatch (vm: Component, watch: Object) {
     }
   }
 }
-
+/** 创建watch */
 function createWatcher (
   vm: Component,
   expOrFn: string | Function,
@@ -369,7 +408,7 @@ export function stateMixin (Vue: Class<Component>) {
 
   Vue.prototype.$set = set
   Vue.prototype.$delete = del
-
+  // VUE实例API $watch
   Vue.prototype.$watch = function (
     expOrFn: string | Function,
     cb: any,
@@ -380,14 +419,17 @@ export function stateMixin (Vue: Class<Component>) {
       return createWatcher(vm, expOrFn, cb, options)
     }
     options = options || {}
+    // 标记是否是用户创建的watcher实例
     options.user = true
     const watcher = new Watcher(vm, expOrFn, cb, options)
+    // 立即执行回调函数
     if (options.immediate) {
       const info = `callback for immediate watcher "${watcher.expression}"`
       pushTarget()
       invokeWithErrorHandling(cb, vm, [watcher.value], vm, info)
       popTarget()
     }
+    // 返回一个取消观察函数
     return function unwatchFn () {
       watcher.teardown()
     }

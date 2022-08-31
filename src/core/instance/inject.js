@@ -16,6 +16,7 @@ export function initProvide (vm: Component) {
 export function initInjections (vm: Component) {
   const result = resolveInject(vm.$options.inject, vm)
   if (result) {
+    // 告诉defineReactive函数仅仅把键值添加到当前实例上而不需要转换成响应式的
     toggleObserving(false)
     Object.keys(result).forEach(key => {
       /* istanbul ignore else */

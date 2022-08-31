@@ -292,6 +292,7 @@ export function del (target: Array<any> | Object, key: any) {
     return
   }
   delete target[key]
+  // 不是响应式对象
   if (!ob) {
     return
   }

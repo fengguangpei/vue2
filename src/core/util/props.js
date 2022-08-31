@@ -107,6 +107,7 @@ function getPropDefaultValue (vm: ?Component, prop: PropOptions, key: string): a
 /**
  * Assert whether a prop is valid.
  */
+// 验证每一个prop属性的类型是否合法
 function assertProp (
   prop: PropOptions,
   name: string,
@@ -158,7 +159,7 @@ function assertProp (
 }
 
 const simpleCheckRE = /^(String|Number|Boolean|Function|Symbol|BigInt)$/
-
+// 判断value的类型是否是type
 function assertType (value: any, type: Function, vm: ?Component): {
   valid: boolean;
   expectedType: string;

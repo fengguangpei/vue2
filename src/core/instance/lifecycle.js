@@ -107,21 +107,31 @@ export function lifecycleMixin (Vue: Class<Component>) {
   }
 
   Vue.prototype.$destroy = function () {
+    // 第一步：从父组件中删除自己
+    // 第二步：卸载渲染组件的watcher
+    // 第三步：卸载数据相关的watchers
+    // 第四步：调用patch更新视图，删除自己
+    // 第五步：删除事件绑定$off()
+    // 删除一些应用
     const vm: Component = this
+    // 防止重复销毁
     if (vm._isBeingDestroyed) {
       return
     }
     callHook(vm, 'beforeDestroy')
     vm._isBeingDestroyed = true
     // remove self from parent
+    // 从父组件中删除自己
     const parent = vm.$parent
     if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
       remove(parent.$children, vm)
     }
     // teardown watchers
+    // 组件渲染的watcher
     if (vm._watcher) {
       vm._watcher.teardown()
     }
+    // 其他watcher
     let i = vm._watchers.length
     while (i--) {
       vm._watchers[i].teardown()
@@ -134,6 +144,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // call the last hook...
     vm._isDestroyed = true
     // invoke destroy hooks on current rendered tree
+    // 
     vm.__patch__(vm._vnode, null)
     // fire destroyed hook
     callHook(vm, 'destroyed')

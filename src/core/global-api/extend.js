@@ -18,10 +18,11 @@ export function initExtend (Vue: GlobalAPI) {
    */
   Vue.extend = function (extendOptions: Object): Function {
     extendOptions = extendOptions || {}
-    const Super = this
-    const SuperId = Super.cid
+    const Super = this // 指向父类，即Vue
+    const SuperId = Super.cid // 唯一标识
+    // 缓存池，缓存创建出来的类
     const cachedCtors = extendOptions._Ctor || (extendOptions._Ctor = {})
-    // 缓存组件的构造函数，命中缓存直接返回
+    // 缓存组件的构造函数，命中缓存直接返回，这个缓存是存在传入的对象上的
     if (cachedCtors[SuperId]) {
       return cachedCtors[SuperId]
     }
@@ -43,6 +44,7 @@ export function initExtend (Vue: GlobalAPI) {
       Super.options,
       extendOptions
     )
+    // 存储父类
     Sub['super'] = Super
 
     // For props and computed properties, we define the proxy getters on
@@ -76,11 +78,13 @@ export function initExtend (Vue: GlobalAPI) {
     // keep a reference to the super options at extension time.
     // later at instantiation we can check if Super's options have
     // been updated.
+    // 子类独有的方法
     Sub.superOptions = Super.options
     Sub.extendOptions = extendOptions
     Sub.sealedOptions = extend({}, Sub.options)
 
     // cache constructor
+    // 缓存创建的子类，下一次使用Vue.extend传递一样的参数时，直接返回，提高性能
     cachedCtors[SuperId] = Sub
     return Sub
   }

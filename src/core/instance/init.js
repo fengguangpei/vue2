@@ -62,7 +62,7 @@ export function initMixin (Vue) {
     callHook(vm, 'beforeCreate')
     // 初始化依赖注入
     initInjections(vm) // resolve injections before data/props
-    // 初始化数据
+    // 初始化数据：props、methods、data、computed、watch
     initState(vm)
     // 初始化依赖注入
     initProvide(vm) // resolve provide after data/props

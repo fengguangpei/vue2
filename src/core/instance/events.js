@@ -81,6 +81,8 @@ export function eventsMixin (Vue: Class<Component>) {
       vm.$off(event, on)
       fn.apply(vm, arguments)
     }
+    // 用户不知道自己的方法名被替换了，在执行$off时找不到对应方法，所以把用户的方法名添加到on方法上，
+    // 看#121行代码
     on.fn = fn
     vm.$on(event, on)
     return vm

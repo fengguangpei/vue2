@@ -7,13 +7,16 @@ import { isIE, isIOS, isNative } from './env'
 
 export let isUsingMicroTask = false
 
-const callbacks = []
-let pending = false
+const callbacks = [] // 回调队列
+let pending = false // 异步锁
 
 function flushCallbacks () {
+  // 重置异步锁
   pending = false
+  // 复制备份并清空回调队列，防止nextick中包含nexttick出现问题
   const copies = callbacks.slice(0)
   callbacks.length = 0
+  // 遍历执行回调
   for (let i = 0; i < copies.length; i++) {
     copies[i]()
   }
@@ -39,6 +42,7 @@ let timerFunc
 // completely stops working after triggering a few times... so, if native
 // Promise is available, we will use it:
 /* istanbul ignore next, $flow-disable-line */
+// 能力检测：promise > mutationObserver > setTmmidiate > setTimeout
 if (typeof Promise !== 'undefined' && isNative(Promise)) {
   const p = Promise.resolve()
   timerFunc = () => {
@@ -85,25 +89,32 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
 }
 
 export function nextTick (cb?: Function, ctx?: Object) {
+  // 存储promise的resolve函数
   let _resolve
   callbacks.push(() => {
+    // 如果有传入回调函数，执行回调函数
     if (cb) {
       try {
         cb.call(ctx)
       } catch (e) {
         handleError(e, ctx, 'nextTick')
       }
-    } else if (_resolve) {
+    }
+    // 否则，把返回的promise状态改为resolve
+    else if (_resolve) {
       _resolve(ctx)
     }
   })
+  // 是否已经加入异步队列，没有就执行
   if (!pending) {
     pending = true
     timerFunc()
   }
   // $flow-disable-line
+  // 没有提供回调时，返回一个promise
   if (!cb && typeof Promise !== 'undefined') {
     return new Promise(resolve => {
+      // 把resolve的控制权转给 #105行 的回调
       _resolve = resolve
     })
   }
