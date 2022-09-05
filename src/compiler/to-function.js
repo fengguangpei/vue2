@@ -8,7 +8,7 @@ type CompiledFunctionResult = {
   render: Function;
   staticRenderFns: Array<Function>;
 };
-
+// 字符串转函数
 function createFunction (code, errors) {
   try {
     return new Function(code)

@@ -1,5 +1,5 @@
 /* @flow */
-
+// 过滤器解析器
 const validDivisionCharRE = /[\w).+\-_$\]]/
 
 export function parseFilters (exp: string): string {

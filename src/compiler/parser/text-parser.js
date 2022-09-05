@@ -1,5 +1,5 @@
 /* @flow */
-
+// 文本解析器
 import { cached } from 'shared/util'
 import { parseFilters } from './filter-parser'
 

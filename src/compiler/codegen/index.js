@@ -1,5 +1,6 @@
 /* @flow */
-
+// 代码生成阶段
+// 将AST抽象语法树转换为渲染函数
 import { genHandlers } from './events'
 import baseDirectives from '../directives/index'
 import { camelize, no, extend } from 'shared/util'
@@ -306,7 +307,7 @@ export function genData (el: ASTElement, state: CodegenState): string {
   }
   return data
 }
-
+// 指令
 function genDirectives (el: ASTElement, state: CodegenState): string | void {
   const dirs = el.directives
   if (!dirs) return

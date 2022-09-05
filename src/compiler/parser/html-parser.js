@@ -8,12 +8,22 @@
  * Original code by Erik Arvidsson (MPL-1.1 OR Apache-2.0 OR GPL-2.0-or-later)
  * http://erik.eae.net/simplehtmlparser/simplehtmlparser.js
  */
-
+// 陈规HTML标签解析器
 import { makeMap, no } from 'shared/util'
 import { isNonPhrasingTag } from 'web/compiler/util'
 import { unicodeRegExp } from 'core/util/lang'
 
 // Regular Expressions for parsing tags and attributes
+/**
+ * 模版内容类型：
+ * 文本
+ * HTML注释
+ * 条件注释
+ * DOC TYPE
+ * 开始标签
+ * 结束标签
+ */
+// 对应的正则表达式
 const attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
 const dynamicArgAttribute = /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+?\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
 const ncname = `[a-zA-Z_][\\-\\.0-9_a-zA-Z${unicodeRegExp.source}]*`
@@ -52,23 +62,26 @@ function decodeAttr (value, shouldDecodeNewlines) {
 }
 
 export function parseHTML (html, options) {
-  const stack = []
+  const stack = []  // 维护AST节点层级的栈
   const expectHTML = options.expectHTML
   const isUnaryTag = options.isUnaryTag || no
-  const canBeLeftOpenTag = options.canBeLeftOpenTag || no
-  let index = 0
-  let last, lastTag
+  const canBeLeftOpenTag = options.canBeLeftOpenTag || no // 用来检测一个标签是否是可以省略闭合标签的非自闭合标签
+  let index = 0 // 解析游标
+  let last, // 存储剩余还未解析的模版字符串
+      lastTag // 存储位于stack栈顶的元素
   while (html) {
     last = html
     // Make sure we're not in a plaintext content element like script/style
+    // 确保即将parse的内容不是在纯文本标签里面（script、style、textarea）
     if (!lastTag || !isPlainTextElement(lastTag)) {
       let textEnd = html.indexOf('<')
       if (textEnd === 0) {
-        // Comment:
+        // Comment: 普通注释
         if (comment.test(html)) {
           const commentEnd = html.indexOf('-->')
 
           if (commentEnd >= 0) {
+            // 是否保留注释
             if (options.shouldKeepComment) {
               options.comment(html.substring(4, commentEnd), index, index + commentEnd + 3)
             }
@@ -78,6 +91,7 @@ export function parseHTML (html, options) {
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
+        // 条件注释
         if (conditionalComment.test(html)) {
           const conditionalEnd = html.indexOf(']>')
 
@@ -94,7 +108,7 @@ export function parseHTML (html, options) {
           continue
         }
 
-        // End tag:
+        // End tag: 开始标签
         const endTagMatch = html.match(endTag)
         if (endTagMatch) {
           const curIndex = index
@@ -103,7 +117,7 @@ export function parseHTML (html, options) {
           continue
         }
 
-        // Start tag:
+        // Start tag: 结束标签
         const startTagMatch = parseStartTag()
         if (startTagMatch) {
           handleStartTag(startTagMatch)
@@ -113,7 +127,7 @@ export function parseHTML (html, options) {
           continue
         }
       }
-
+      // 文本标签
       let text, rest, next
       if (textEnd >= 0) {
         rest = html.slice(textEnd)
@@ -143,7 +157,9 @@ export function parseHTML (html, options) {
       if (options.chars && text) {
         options.chars(text, index - text.length, index)
       }
-    } else {
+    }
+    // 纯文本
+    else {
       let endTagLength = 0
       const stackedTag = lastTag.toLowerCase()
       const reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'))
@@ -157,6 +173,7 @@ export function parseHTML (html, options) {
         if (shouldIgnoreFirstNewline(stackedTag, text)) {
           text = text.slice(1)
         }
+        // 解析纯文本
         if (options.chars) {
           options.chars(text)
         }
@@ -166,7 +183,7 @@ export function parseHTML (html, options) {
       html = rest
       parseEndTag(stackedTag, index - endTagLength, index)
     }
-
+    // 将整个字符串作为文本对待
     if (html === last) {
       options.chars && options.chars(html)
       if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
@@ -178,12 +195,12 @@ export function parseHTML (html, options) {
 
   // Clean up any remaining tags
   parseEndTag()
-
+  // 指针前进
   function advance (n) {
     index += n
     html = html.substring(n)
   }
-
+  // 解析开始标签
   function parseStartTag () {
     const start = html.match(startTagOpen)
     if (start) {
@@ -194,12 +211,14 @@ export function parseHTML (html, options) {
       }
       advance(start[0].length)
       let end, attr
+      // 解析标签属性
       while (!(end = html.match(startTagClose)) && (attr = html.match(dynamicArgAttribute) || html.match(attribute))) {
         attr.start = index
         advance(attr[0].length)
         attr.end = index
         match.attrs.push(attr)
       }
+      // 是否为自闭合标签
       if (end) {
         match.unarySlash = end[1]
         advance(end[0].length)
@@ -208,7 +227,7 @@ export function parseHTML (html, options) {
       }
     }
   }
-
+  // 对parseStartTag函数的解析结果进行下一步处理
   function handleStartTag (match) {
     const tagName = match.tagName
     const unarySlash = match.unarySlash
@@ -251,13 +270,19 @@ export function parseHTML (html, options) {
       options.start(tagName, attrs, unary, match.start, match.end)
     }
   }
-
+  // 解析结束标签
+  /**
+   * 第一种是三个参数都传递，用于处理普通的结束标签
+   * 第二种是只传递tagName
+   * 第三种是三个参数都不传递，用于处理栈中剩余未处理的标签
+   */
   function parseEndTag (tagName, start, end) {
     let pos, lowerCasedTagName
     if (start == null) start = index
     if (end == null) end = index
 
     // Find the closest opened tag of the same type
+    // 如果tagName存在，那么就从后往前遍历栈，在栈中寻找与tagName相同的标签并记录其所在的位置pos，如果tagName不存在，则将pos置为0。
     if (tagName) {
       lowerCasedTagName = tagName.toLowerCase()
       for (pos = stack.length - 1; pos >= 0; pos--) {
@@ -272,6 +297,7 @@ export function parseHTML (html, options) {
 
     if (pos >= 0) {
       // Close all the open elements, up the stack
+      // 从栈顶往前遍历，如果有其他标签，则表明这个标签没有被正确闭合，直接打印警告
       for (let i = stack.length - 1; i >= pos; i--) {
         if (process.env.NODE_ENV !== 'production' &&
           (i > pos || !tagName) &&
@@ -282,19 +308,29 @@ export function parseHTML (html, options) {
             { start: stack[i].start, end: stack[i].end }
           )
         }
+        // 为了程序的正确性，自动将其闭合
         if (options.end) {
           options.end(stack[i].tag, start, end)
         }
       }
 
       // Remove the open elements from the stack
+      // 出栈
       stack.length = pos
+      // 更新栈顶元素
       lastTag = pos && stack[pos - 1].tag
-    } else if (lowerCasedTagName === 'br') {
+    }
+    // 没有找到对应的开始标签，即pos === -1
+    // 浏览器会自动把</br>标签解析为正常的 <br>标签，而对于</p>浏览器则自动将其补全为<p></p>，
+    // 所以Vue为了与浏览器对这两个标签的行为保持一致，故对这两个便签单独判断处理，
+    // 是否为br标签
+    else if (lowerCasedTagName === 'br') {
       if (options.start) {
         options.start(tagName, [], true, start, end)
       }
-    } else if (lowerCasedTagName === 'p') {
+    }
+    // 是否为pa标签
+    else if (lowerCasedTagName === 'p') {
       if (options.start) {
         options.start(tagName, [], false, start, end)
       }

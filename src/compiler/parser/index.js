@@ -1,5 +1,6 @@
 /* @flow */
-
+// 模版解析
+// 将模版字符串解析为抽象语法树，AST
 import he from 'he'
 import { parseHTML } from './html-parser'
 import { parseText } from './text-parser'
@@ -60,7 +61,7 @@ let maybeComponent
 export function createASTElement (
   tag: string,
   attrs: Array<ASTAttr>,
-  parent: ASTElement | void
+  parent: ASTElement | void // 
 ): ASTElement {
   return {
     type: 1,
@@ -214,6 +215,10 @@ export function parse (
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
+    // 当解析到开始标签时，调用该函数
+    // tag: 标签名
+    // attrs: 标签属性
+    // unary: 标签是否闭合
     start (tag, attrs, unary, start, end) {
       // check namespace.
       // inherit parent ns if there is one
@@ -274,9 +279,11 @@ export function parse (
           inVPre = true
         }
       }
+
       if (platformIsPreTag(element.tag)) {
         inPre = true
       }
+
       if (inVPre) {
         processRawAttrs(element)
       } else if (!element.processed) {
@@ -300,7 +307,7 @@ export function parse (
         closeElement(element)
       }
     },
-
+    // 当解析到结束标签时，调用该函数
     end (tag, start, end) {
       const element = stack[stack.length - 1]
       // pop stack
@@ -311,8 +318,10 @@ export function parse (
       }
       closeElement(element)
     },
-
+    // 当解析到文本时，调用该函数
+    // 根据文本是否包含变量再细化为创建含有变量的AST节点和不包含变量的AST节点
     chars (text: string, start: number, end: number) {
+      // 打印警告
       if (!currentParent) {
         if (process.env.NODE_ENV !== 'production') {
           if (text === template) {
@@ -361,14 +370,30 @@ export function parse (
         }
         let res
         let child: ?ASTNode
+        // 包含变量的文本
         if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
+          /**
+           * let res = parseText(text)
+           * res = {
+           *     expression:"我叫"+_s(name)+"，我今年"+_s(age)+"岁了",
+           *     tokens:[
+           *         "我叫",
+           *         {'@binding': name },
+           *         "，我今年"
+           *         {'@binding': age },
+           *       "岁了"
+           *     ]
+           * }
+           */
           child = {
             type: 2,
             expression: res.expression,
             tokens: res.tokens,
             text
           }
-        } else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
+        }
+        // 不包含变量的文本
+        else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
           child = {
             type: 3,
             text
@@ -383,6 +408,7 @@ export function parse (
         }
       }
     },
+    // 当解析到注释时，调用该函数
     comment (text: string, start, end) {
       // adding anything as a sibling to the root node is forbidden
       // comments should still be allowed, but ignored
