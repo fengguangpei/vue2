@@ -791,6 +791,7 @@ function processAttrs (el) {
   for (i = 0, l = list.length; i < l; i++) {
     name = rawName = list[i].name
     value = list[i].value
+    // Vue内部指令，以v-、@、:开头
     if (dirRE.test(name)) {
       // mark element as dynamic
       el.hasBindings = true
@@ -803,6 +804,7 @@ function processAttrs (el) {
       } else if (modifiers) {
         name = name.replace(modifierRE, '')
       }
+      // v-bind
       if (bindRE.test(name)) { // v-bind
         name = name.replace(bindRE, '')
         value = parseFilters(value)
@@ -871,14 +873,18 @@ function processAttrs (el) {
         } else {
           addAttr(el, name, value, list[i], isDynamic)
         }
-      } else if (onRE.test(name)) { // v-on
+      }
+      // v-on
+      else if (onRE.test(name)) { // v-on
         name = name.replace(onRE, '')
         isDynamic = dynamicArgRE.test(name)
         if (isDynamic) {
           name = name.slice(1, -1)
         }
         addHandler(el, name, value, modifiers, false, warn, list[i], isDynamic)
-      } else { // normal directives
+      }
+      // 普通
+      else { // normal directives
         name = name.replace(dirRE, '')
         // parse arg
         const argMatch = name.match(argRE)
@@ -896,7 +902,9 @@ function processAttrs (el) {
           checkForAliasModel(el, value)
         }
       }
-    } else {
+    }
+    // 非Vue内部指令
+    else {
       // literal attribute
       if (process.env.NODE_ENV !== 'production') {
         const res = parseText(value, delimiters)

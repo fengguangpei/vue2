@@ -19,7 +19,7 @@ export function pluckModuleFunction<F: Function> (
     ? modules.map(m => m[key]).filter(_ => _)
     : []
 }
-
+// 为抽象语法树节点添加props属性
 export function addProp (el: ASTElement, name: string, value: string, range?: Range, dynamic?: boolean) {
   (el.props || (el.props = [])).push(rangeSetItem({ name, value, dynamic }, range))
   el.plain = false
@@ -38,7 +38,7 @@ export function addRawAttr (el: ASTElement, name: string, value: any, range?: Ra
   el.attrsMap[name] = value
   el.attrsList.push(rangeSetItem({ name, value }, range))
 }
-
+// 添加指令
 export function addDirective (
   el: ASTElement,
   name: string,

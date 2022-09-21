@@ -2,7 +2,7 @@
  * Not type checking this file because flow doesn't like attaching
  * properties to Elements.
  */
-
+// input标签的type类型
 import { isTextInputType } from 'web/util/element'
 import { looseEqual, looseIndexOf } from 'shared/util'
 import { mergeVNodeHook } from 'core/vdom/helpers/index'

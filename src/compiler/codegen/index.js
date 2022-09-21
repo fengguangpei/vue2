@@ -307,7 +307,7 @@ export function genData (el: ASTElement, state: CodegenState): string {
   }
   return data
 }
-// 指令
+// 生成指令对应的字符串代码
 function genDirectives (el: ASTElement, state: CodegenState): string | void {
   const dirs = el.directives
   if (!dirs) return

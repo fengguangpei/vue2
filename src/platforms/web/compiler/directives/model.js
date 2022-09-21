@@ -10,7 +10,7 @@ let warn
 // so we used some reserved tokens during compile.
 export const RANGE_TOKEN = '__r'
 export const CHECKBOX_RADIO_TOKEN = '__c'
-
+// v-model指令的实现
 export default function model (
   el: ASTElement,
   dir: ASTDirective,
@@ -21,7 +21,7 @@ export default function model (
   const modifiers = dir.modifiers
   const tag = el.tag
   const type = el.attrsMap.type
-
+  // type: file不能使用v-model
   if (process.env.NODE_ENV !== 'production') {
     // inputs with type="file" are read only and setting the input's
     // value will throw an error.
@@ -33,7 +33,7 @@ export default function model (
       )
     }
   }
-
+  // 根据v-model作用的对象不同，做不同的处理
   if (el.component) {
     genComponentModel(el, value, modifiers)
     // component v-model doesn't need extra runtime
@@ -63,7 +63,7 @@ export default function model (
   // ensure runtime directive metadata
   return true
 }
-
+// checkbox的v-model绑定
 function genCheckboxModel (
   el: ASTElement,
   value: string,
@@ -94,7 +94,7 @@ function genCheckboxModel (
     null, true
   )
 }
-
+// radio的v-model绑定
 function genRadioModel (
   el: ASTElement,
   value: string,
@@ -106,7 +106,7 @@ function genRadioModel (
   addProp(el, 'checked', `_q(${value},${valueBinding})`)
   addHandler(el, 'change', genAssignmentCode(value, valueBinding), null, true)
 }
-
+// select的v-model绑定
 function genSelect (
   el: ASTElement,
   value: string,
@@ -123,14 +123,14 @@ function genSelect (
   code = `${code} ${genAssignmentCode(value, assignment)}`
   addHandler(el, 'change', code, null, true)
 }
-
+// input、textarea的v-model绑定
 function genDefaultModel (
   el: ASTElement,
   value: string,
   modifiers: ?ASTModifiers
 ): ?boolean {
   const type = el.attrsMap.type
-
+  // v-bind:value和v-model不能同时使用
   // warn if v-bind:value conflicts with v-model
   // except for inputs with v-bind:type
   if (process.env.NODE_ENV !== 'production') {
@@ -163,11 +163,13 @@ function genDefaultModel (
   }
 
   let code = genAssignmentCode(value, valueExpression)
+  // 处理输入法编辑器
   if (needCompositionGuard) {
     code = `if($event.target.composing)return;${code}`
   }
-
+  // 新增props属性
   addProp(el, 'value', `(${value})`)
+  // 新增事件监听
   addHandler(el, event, code, null, true)
   if (trim || number) {
     addHandler(el, 'blur', '$forceUpdate()')
