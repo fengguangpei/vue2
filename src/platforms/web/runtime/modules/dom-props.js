@@ -4,7 +4,7 @@ import { isDef, isUndef, extend, toNumber } from 'shared/util'
 import { isSVG } from 'web/util/index'
 
 let svgContainer
-
+// 更新DOM Props的钩子函数
 function updateDOMProps (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   if (isUndef(oldVnode.data.domProps) && isUndef(vnode.data.domProps)) {
     return

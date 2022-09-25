@@ -1,5 +1,5 @@
 /* @flow */
-
+// render函数接收的h函数逻辑
 import config from '../config'
 import VNode, { createEmptyVNode } from './vnode'
 import { createComponent } from './create-component'
@@ -12,6 +12,7 @@ import {
   isTrue,
   isObject,
   isPrimitive,
+  // 查找filters、directive、components
   resolveAsset
 } from '../util/index'
 
@@ -105,6 +106,7 @@ export function _createElement (
   if (typeof tag === 'string') {
     let Ctor
     ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag)
+    // 原始标签
     if (config.isReservedTag(tag)) {
       // platform built-in elements
       if (process.env.NODE_ENV !== 'production' && isDef(data) && isDef(data.nativeOn) && data.tag !== 'component') {
@@ -117,10 +119,14 @@ export function _createElement (
         config.parsePlatformTagName(tag), data, children,
         undefined, undefined, context
       )
-    } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
+    }
+    // component组件
+    else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
       // component
       vnode = createComponent(Ctor, data, context, children, tag)
-    } else {
+    }
+    // 自定义元素
+    else {
       // unknown or unlisted namespaced elements
       // check at runtime because it may get assigned a namespace when its
       // parent normalizes children

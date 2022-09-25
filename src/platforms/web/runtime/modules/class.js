@@ -10,11 +10,12 @@ import {
   stringifyClass,
   genClassForVnode
 } from 'web/util/index'
-
+// 更新元素节点的class绑定的钩子函数
 function updateClass (oldVnode: any, vnode: any) {
   const el = vnode.elm
   const data: VNodeData = vnode.data
   const oldData: VNodeData = oldVnode.data
+  // 判断是否有class绑定
   if (
     isUndef(data.staticClass) &&
     isUndef(data.class) && (

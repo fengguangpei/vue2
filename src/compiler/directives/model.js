@@ -3,6 +3,7 @@
 /**
  * Cross-platform code generation for component v-model
  */
+// 组件v-model解析
 export function genComponentModel (
   el: ASTElement,
   value: string,

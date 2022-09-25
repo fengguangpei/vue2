@@ -7,6 +7,7 @@ import platformModules from 'web/runtime/modules/index'
 
 // the directive module should be applied last, after all
 // built-in modules have been applied.
+// 渲染时的钩子函数，DOM节点创建完之后，还需要有标签属性，样式，事件绑定
 const modules = platformModules.concat(baseModules)
 // patch函数的实现
 export const patch: Function = createPatchFunction({ nodeOps, modules })

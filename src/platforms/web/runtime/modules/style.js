@@ -43,7 +43,7 @@ const normalize = cached(function (prop) {
     }
   }
 })
-
+// 更新DOM style的钩子函数
 function updateStyle (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const data = vnode.data
   const oldData = oldVnode.data

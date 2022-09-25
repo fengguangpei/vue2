@@ -2,7 +2,7 @@
 
 import { inBrowser } from 'core/util/env'
 import { makeMap } from 'shared/util'
-
+// createElementNS用到的命名空间
 export const namespaceMap = {
   svg: 'http://www.w3.org/2000/svg',
   math: 'http://www.w3.org/1998/Math/MathML'
@@ -37,7 +37,7 @@ export const isPreTag = (tag: ?string): boolean => tag === 'pre'
 export const isReservedTag = (tag: string): ?boolean => {
   return isHTMLTag(tag) || isSVG(tag)
 }
-
+// 获取标签明明空间
 export function getTagNamespace (tag: string): ?string {
   if (isSVG(tag)) {
     return 'svg'
@@ -50,6 +50,7 @@ export function getTagNamespace (tag: string): ?string {
 }
 
 const unknownElementCache = Object.create(null)
+// 判断是否是自定义元素，比如<username></username>
 export function isUnknownElement (tag: string): boolean {
   /* istanbul ignore if */
   if (!inBrowser) {

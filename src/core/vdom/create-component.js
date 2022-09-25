@@ -36,6 +36,7 @@ import {
 // vue虚拟DOM依赖的开源库的hook函数
 const componentVNodeHooks = {
   init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
+    // keep-alive逻辑
     if (
       vnode.componentInstance &&
       !vnode.componentInstance._isDestroyed &&
@@ -44,11 +45,15 @@ const componentVNodeHooks = {
       // kept-alive components, treat as a patch
       const mountedNode: any = vnode // work around flow
       componentVNodeHooks.prepatch(mountedNode, mountedNode)
-    } else {
+    }
+    // 递归处理子组件的逻辑
+    else {
+      // 实例化子组件，相当于new Vue()
       const child = vnode.componentInstance = createComponentInstanceForVnode(
         vnode,
         activeInstance
       )
+      // 挂载子组件
       child.$mount(hydrating ? vnode.elm : undefined, hydrating)
     }
   },
@@ -96,9 +101,8 @@ const componentVNodeHooks = {
     }
   }
 }
-
+// 待合并的虚拟DOM的钩子函数
 const hooksToMerge = Object.keys(componentVNodeHooks)
-
 export function createComponent (
   Ctor: Class<Component> | Function | Object | void,
   data: ?VNodeData,
@@ -128,6 +132,7 @@ export function createComponent (
   }
 
   // async component
+  // 异步组件
   let asyncFactory
   if (isUndef(Ctor.cid)) {
     asyncFactory = Ctor
@@ -150,6 +155,7 @@ export function createComponent (
 
   // resolve constructor options in case global mixins are applied after
   // component constructor creation
+  // 合并组件选项
   resolveConstructorOptions(Ctor)
 
   // transform component v-model data into props & events
@@ -159,9 +165,11 @@ export function createComponent (
   }
 
   // extract props
+  // props处理
   const propsData = extractPropsFromVNodeData(data, Ctor, tag)
 
   // functional component
+  // 函数式组件
   if (isTrue(Ctor.options.functional)) {
     return createFunctionalComponent(Ctor, propsData, data, context, children)
   }
@@ -172,7 +180,7 @@ export function createComponent (
   // replace with listeners with .native modifier
   // so it gets processed during parent component patch.
   data.on = data.nativeOn
-
+  // 抽象组件
   if (isTrue(Ctor.options.abstract)) {
     // abstract components do not keep anything
     // other than props & listeners & slot
@@ -198,14 +206,6 @@ export function createComponent (
     asyncFactory
   )
 
-  // Weex specific: invoke recycle-list optimized @render function for
-  // extracting cell-slot template.
-  // https://github.com/Hanks10100/weex-native-directive/tree/master/component
-  /* istanbul ignore if */
-  if (__WEEX__ && isRecyclableComponent(vnode)) {
-    return renderRecyclableComponentTemplate(vnode)
-  }
-
   return vnode
 }
 
@@ -228,19 +228,20 @@ export function createComponentInstanceForVnode (
   }
   return new vnode.componentOptions.Ctor(options)
 }
-
+// 为VNode的hook安装虚拟DOM的钩子函数
 function installComponentHooks (data: VNodeData) {
   const hooks = data.hook || (data.hook = {})
   for (let i = 0; i < hooksToMerge.length; i++) {
     const key = hooksToMerge[i]
     const existing = hooks[key]
     const toMerge = componentVNodeHooks[key]
+    // 这里主要处理自定义hook和内部hook的合并逻辑
     if (existing !== toMerge && !(existing && existing._merged)) {
       hooks[key] = existing ? mergeHook(toMerge, existing) : toMerge
     }
   }
 }
-
+// 合并hook
 function mergeHook (f1: any, f2: any): Function {
   const merged = (a, b) => {
     // flow complains about extra args which is why we use any
@@ -254,6 +255,7 @@ function mergeHook (f1: any, f2: any): Function {
 // transform component v-model info (value and callback) into
 // prop and event handler respectively.
 // v-model的实现
+// data.model是模版编译的时候生成的，来源compiler/codegen/index.js
 function transformModel (options, data: any) {
   const prop = (options.model && options.model.prop) || 'value'
   const event = (options.model && options.model.event) || 'input'

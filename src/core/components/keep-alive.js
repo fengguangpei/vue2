@@ -26,7 +26,7 @@ function matches (pattern: string | RegExp | Array<string>, name: string): boole
   /* istanbul ignore next */
   return false
 }
-
+// 遍历缓存，如果不需要缓存了，则调用pruneCacheEntry
 function pruneCache (keepAliveInstance: any, filter: Function) {
   const { cache, keys, _vnode } = keepAliveInstance
   for (const key in cache) {
@@ -39,7 +39,7 @@ function pruneCache (keepAliveInstance: any, filter: Function) {
     }
   }
 }
-
+// 删除缓存的组件，调用该组件的$destroy方法
 function pruneCacheEntry (
   cache: CacheEntryMap,
   key: string,

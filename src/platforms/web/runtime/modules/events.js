@@ -102,7 +102,7 @@ function remove (
     capture
   )
 }
-
+// 更新DOM事件监听器的钩子函数
 function updateDOMListeners (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   if (isUndef(oldVnode.data.on) && isUndef(vnode.data.on)) {
     return

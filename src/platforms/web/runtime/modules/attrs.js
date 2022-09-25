@@ -17,7 +17,7 @@ import {
   isFalsyAttrValue,
   convertEnumeratedValue
 } from 'web/util/index'
-
+// 更新元素节点的属性绑定 普通的HTML attributes绑定
 function updateAttrs (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const opts = vnode.componentOptions
   if (isDef(opts) && opts.Ctor.options.inheritAttrs === false) {
