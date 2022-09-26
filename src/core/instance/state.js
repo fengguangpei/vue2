@@ -35,7 +35,7 @@ const sharedPropertyDefinition = {
   get: noop,
   set: noop
 }
-
+// 代理属性
 export function proxy (target: Object, sourceKey: string, key: string) {
   sharedPropertyDefinition.get = function proxyGetter () {
     return this[sourceKey][key]
@@ -173,6 +173,7 @@ function initData (vm: Component) {
 
 export function getData (data: Function, vm: Component): any {
   // #7573 disable dep collection when invoking data getters
+  // 设置一个空的target，避免函数执行期间触发依赖收集
   pushTarget()
   try {
     return data.call(vm, vm)
@@ -180,6 +181,7 @@ export function getData (data: Function, vm: Component): any {
     handleError(e, vm, `data()`)
     return {}
   } finally {
+    // 删除刚刚添加的空target
     popTarget()
   }
 }

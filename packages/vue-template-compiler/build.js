@@ -32,7 +32,7 @@ function isPrimitive (value) {
 
 /**
  * Quick object check - this is primarily used to tell
- * Objects from primitive values when we know the value
+ * objects from primitive values when we know the value
  * is a JSON-compliant type.
  */
 function isObject (obj) {
@@ -133,42 +133,12 @@ var camelize = cached(function (str) {
 
 /**
  * Hyphenate a camelCase string.
+ * 驼峰转kebab-case
  */
 var hyphenateRE = /\B([A-Z])/g;
 var hyphenate = cached(function (str) {
   return str.replace(hyphenateRE, '-$1').toLowerCase()
 });
-
-/**
- * Simple bind polyfill for environments that do not support it,
- * e.g., PhantomJS 1.x. Technically, we don't need this anymore
- * since native bind is now performant enough in most browsers.
- * But removing it would mean breaking code that was able to run in
- * PhantomJS 1.x, so this must be kept for backward compatibility.
- */
-
-/* istanbul ignore next */
-function polyfillBind (fn, ctx) {
-  function boundFn (a) {
-    var l = arguments.length;
-    return l
-      ? l > 1
-        ? fn.apply(ctx, arguments)
-        : fn.call(ctx, a)
-      : fn.call(ctx)
-  }
-
-  boundFn._length = fn.length;
-  return boundFn
-}
-
-function nativeBind (fn, ctx) {
-  return fn.bind(ctx)
-}
-
-var bind = Function.prototype.bind
-  ? nativeBind
-  : polyfillBind;
 
 /**
  * Mix properties into target object.
@@ -259,6 +229,16 @@ function def (obj, key, val, enumerable) {
  */
 
 // Regular Expressions for parsing tags and attributes
+/**
+ * 模版内容类型：
+ * 文本
+ * HTML注释
+ * 条件注释
+ * DOC TYPE
+ * 开始标签
+ * 结束标签
+ */
+// 对应的正则表达式
 var attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
 var dynamicArgAttribute = /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+?\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
 var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z" + (unicodeRegExp.source) + "]*";
@@ -297,23 +277,26 @@ function decodeAttr (value, shouldDecodeNewlines) {
 }
 
 function parseHTML (html, options) {
-  var stack = [];
+  var stack = [];  // 维护AST节点层级的栈
   var expectHTML = options.expectHTML;
-  var isUnaryTag$$1 = options.isUnaryTag || no;
-  var canBeLeftOpenTag$$1 = options.canBeLeftOpenTag || no;
-  var index = 0;
-  var last, lastTag;
+  var isUnaryTag = options.isUnaryTag || no;
+  var canBeLeftOpenTag = options.canBeLeftOpenTag || no; // 用来检测一个标签是否是可以省略闭合标签的非自闭合标签
+  var index = 0; // 解析游标
+  var last, // 存储剩余还未解析的模版字符串
+      lastTag; // 存储位于stack栈顶的元素
   while (html) {
     last = html;
     // Make sure we're not in a plaintext content element like script/style
+    // 确保即将parse的内容不是在纯文本标签里面（script、style、textarea）
     if (!lastTag || !isPlainTextElement(lastTag)) {
       var textEnd = html.indexOf('<');
       if (textEnd === 0) {
-        // Comment:
+        // Comment: 普通注释
         if (comment.test(html)) {
           var commentEnd = html.indexOf('-->');
 
           if (commentEnd >= 0) {
+            // 是否保留注释
             if (options.shouldKeepComment) {
               options.comment(html.substring(4, commentEnd), index, index + commentEnd + 3);
             }
@@ -323,6 +306,7 @@ function parseHTML (html, options) {
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
+        // 条件注释
         if (conditionalComment.test(html)) {
           var conditionalEnd = html.indexOf(']>');
 
@@ -339,7 +323,7 @@ function parseHTML (html, options) {
           continue
         }
 
-        // End tag:
+        // End tag: 开始标签
         var endTagMatch = html.match(endTag);
         if (endTagMatch) {
           var curIndex = index;
@@ -348,7 +332,7 @@ function parseHTML (html, options) {
           continue
         }
 
-        // Start tag:
+        // Start tag: 结束标签
         var startTagMatch = parseStartTag();
         if (startTagMatch) {
           handleStartTag(startTagMatch);
@@ -358,7 +342,7 @@ function parseHTML (html, options) {
           continue
         }
       }
-
+      // 文本标签
       var text = (void 0), rest = (void 0), next = (void 0);
       if (textEnd >= 0) {
         rest = html.slice(textEnd);
@@ -388,7 +372,9 @@ function parseHTML (html, options) {
       if (options.chars && text) {
         options.chars(text, index - text.length, index);
       }
-    } else {
+    }
+    // 纯文本
+    else {
       var endTagLength = 0;
       var stackedTag = lastTag.toLowerCase();
       var reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'));
@@ -402,6 +388,7 @@ function parseHTML (html, options) {
         if (shouldIgnoreFirstNewline(stackedTag, text)) {
           text = text.slice(1);
         }
+        // 解析纯文本
         if (options.chars) {
           options.chars(text);
         }
@@ -411,7 +398,7 @@ function parseHTML (html, options) {
       html = rest$1;
       parseEndTag(stackedTag, index - endTagLength, index);
     }
-
+    // 将整个字符串作为文本对待
     if (html === last) {
       options.chars && options.chars(html);
       if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
@@ -423,12 +410,12 @@ function parseHTML (html, options) {
 
   // Clean up any remaining tags
   parseEndTag();
-
+  // 指针前进
   function advance (n) {
     index += n;
     html = html.substring(n);
   }
-
+  // 解析开始标签
   function parseStartTag () {
     var start = html.match(startTagOpen);
     if (start) {
@@ -439,12 +426,14 @@ function parseHTML (html, options) {
       };
       advance(start[0].length);
       var end, attr;
+      // 解析标签属性
       while (!(end = html.match(startTagClose)) && (attr = html.match(dynamicArgAttribute) || html.match(attribute))) {
         attr.start = index;
         advance(attr[0].length);
         attr.end = index;
         match.attrs.push(attr);
       }
+      // 是否为自闭合标签
       if (end) {
         match.unarySlash = end[1];
         advance(end[0].length);
@@ -453,7 +442,7 @@ function parseHTML (html, options) {
       }
     }
   }
-
+  // 对parseStartTag函数的解析结果进行下一步处理
   function handleStartTag (match) {
     var tagName = match.tagName;
     var unarySlash = match.unarySlash;
@@ -462,12 +451,12 @@ function parseHTML (html, options) {
       if (lastTag === 'p' && isNonPhrasingTag(tagName)) {
         parseEndTag(lastTag);
       }
-      if (canBeLeftOpenTag$$1(tagName) && lastTag === tagName) {
+      if (canBeLeftOpenTag(tagName) && lastTag === tagName) {
         parseEndTag(tagName);
       }
     }
 
-    var unary = isUnaryTag$$1(tagName) || !!unarySlash;
+    var unary = isUnaryTag(tagName) || !!unarySlash;
 
     var l = match.attrs.length;
     var attrs = new Array(l);
@@ -496,13 +485,19 @@ function parseHTML (html, options) {
       options.start(tagName, attrs, unary, match.start, match.end);
     }
   }
-
+  // 解析结束标签
+  /**
+   * 第一种是三个参数都传递，用于处理普通的结束标签
+   * 第二种是只传递tagName
+   * 第三种是三个参数都不传递，用于处理栈中剩余未处理的标签
+   */
   function parseEndTag (tagName, start, end) {
     var pos, lowerCasedTagName;
     if (start == null) { start = index; }
     if (end == null) { end = index; }
 
     // Find the closest opened tag of the same type
+    // 如果tagName存在，那么就从后往前遍历栈，在栈中寻找与tagName相同的标签并记录其所在的位置pos，如果tagName不存在，则将pos置为0。
     if (tagName) {
       lowerCasedTagName = tagName.toLowerCase();
       for (pos = stack.length - 1; pos >= 0; pos--) {
@@ -517,6 +512,7 @@ function parseHTML (html, options) {
 
     if (pos >= 0) {
       // Close all the open elements, up the stack
+      // 从栈顶往前遍历，如果有其他标签，则表明这个标签没有被正确闭合，直接打印警告
       for (var i = stack.length - 1; i >= pos; i--) {
         if (process.env.NODE_ENV !== 'production' &&
           (i > pos || !tagName) &&
@@ -527,19 +523,29 @@ function parseHTML (html, options) {
             { start: stack[i].start, end: stack[i].end }
           );
         }
+        // 为了程序的正确性，自动将其闭合
         if (options.end) {
           options.end(stack[i].tag, start, end);
         }
       }
 
       // Remove the open elements from the stack
+      // 出栈
       stack.length = pos;
+      // 更新栈顶元素
       lastTag = pos && stack[pos - 1].tag;
-    } else if (lowerCasedTagName === 'br') {
+    }
+    // 没有找到对应的开始标签，即pos === -1
+    // 浏览器会自动把</br>标签解析为正常的 <br>标签，而对于</p>浏览器则自动将其补全为<p></p>，
+    // 所以Vue为了与浏览器对这两个标签的行为保持一致，故对这两个便签单独判断处理，
+    // 是否为br标签
+    else if (lowerCasedTagName === 'br') {
       if (options.start) {
         options.start(tagName, [], true, start, end);
       }
-    } else if (lowerCasedTagName === 'p') {
+    }
+    // 是否为pa标签
+    else if (lowerCasedTagName === 'p') {
       if (options.start) {
         options.start(tagName, [], false, start, end);
       }
@@ -707,11 +713,15 @@ var isFF = UA && UA.match(/firefox\/(\d+)/);
 
 // Firefox has a "watch" function on Object.prototype...
 var nativeWatch = ({}).watch;
+
+var supportsPassive = false;
 if (inBrowser) {
   try {
     var opts = {};
     Object.defineProperty(opts, 'passive', ({
       get: function get () {
+        /* istanbul ignore next */
+        supportsPassive = true;
       }
     })); // https://github.com/facebook/flow/issues/285
     window.addEventListener('test-passive', null, opts);
@@ -735,9 +745,6 @@ var isServerRendering = function () {
   return _isServer
 };
 
-// detect devtools
-var devtools = inBrowser && window.__VUE_DEVTOOLS_GLOBAL_HOOK__;
-
 /* istanbul ignore next */
 function isNative (Ctor) {
   return typeof Ctor === 'function' && /native code/.test(Ctor.toString())
@@ -746,31 +753,8 @@ function isNative (Ctor) {
 var hasSymbol =
   typeof Symbol !== 'undefined' && isNative(Symbol) &&
   typeof Reflect !== 'undefined' && isNative(Reflect.ownKeys);
-
-var _Set;
 /* istanbul ignore if */ // $flow-disable-line
-if (typeof Set !== 'undefined' && isNative(Set)) {
-  // use native Set when available.
-  _Set = Set;
-} else {
-  // a non-standard Set polyfill that only works with primitive keys.
-  _Set = /*@__PURE__*/(function () {
-    function Set () {
-      this.set = Object.create(null);
-    }
-    Set.prototype.has = function has (key) {
-      return this.set[key] === true
-    };
-    Set.prototype.add = function add (key) {
-      this.set[key] = true;
-    };
-    Set.prototype.clear = function clear () {
-      this.set = Object.create(null);
-    };
-
-    return Set;
-  }());
-}
+if (typeof Set !== 'undefined' && isNative(Set)) ;
 
 var ASSET_TYPES = [
   'component',
@@ -908,7 +892,9 @@ if (process.env.NODE_ENV !== 'production') {
   warn = function (msg, vm) {
     var trace = vm ? generateComponentTrace(vm) : '';
 
-    if (hasConsole && (!config.silent)) {
+    if (config.warnHandler) {
+      config.warnHandler.call(null, msg, vm, trace);
+    } else if (hasConsole && (!config.silent)) {
       console.error(("[Vue warn]: " + msg + trace));
     }
   };
@@ -995,21 +981,22 @@ var Dep = function Dep () {
   this.id = uid++;
   this.subs = [];
 };
-
+// 添加依赖
 Dep.prototype.addSub = function addSub (sub) {
   this.subs.push(sub);
 };
-
+// 删除依赖
 Dep.prototype.removeSub = function removeSub (sub) {
   remove(this.subs, sub);
 };
-
+// 让watcher知道自己被谁作为依赖收集了
 Dep.prototype.depend = function depend () {
+  // Dep.target是一个watcher实例
   if (Dep.target) {
     Dep.target.addDep(this);
   }
 };
-
+// 通知更新
 Dep.prototype.notify = function notify () {
   // stabilize the subscriber list first
   var subs = this.subs.slice();
@@ -1083,7 +1070,7 @@ Object.defineProperties( VNode.prototype, prototypeAccessors );
 
 var arrayProto = Array.prototype;
 var arrayMethods = Object.create(arrayProto);
-
+// 操作数组会触发更新的七个方法
 var methodsToPatch = [
   'push',
   'pop',
@@ -1099,12 +1086,14 @@ var methodsToPatch = [
  */
 methodsToPatch.forEach(function (method) {
   // cache original method
-  var original = arrayProto[method];
+  var original = arrayProto[method]; // Array.prototype上的原型方法
   def(arrayMethods, method, function mutator () {
     var args = [], len = arguments.length;
     while ( len-- ) args[ len ] = arguments[ len ];
 
     var result = original.apply(this, args);
+    // Observer实例
+    // 原型方法只能通过实例调用，所以这里的this指向数组
     var ob = this.__ob__;
     var inserted;
     switch (method) {
@@ -1116,9 +1105,12 @@ methodsToPatch.forEach(function (method) {
         inserted = args.slice(2);
         break
     }
+    // 通过数组的方法新增的元素, 一样需要被响应式监听
     if (inserted) { ob.observeArray(inserted); }
     // notify change
-    ob.dep.notify();
+    // 数组的依赖是从Observer实例上获取的
+    ob.dep.notify(); // 触发更新
+    // 返回结果
     return result
   });
 });
@@ -1128,12 +1120,6 @@ methodsToPatch.forEach(function (method) {
 var arrayKeys = Object.getOwnPropertyNames(arrayMethods);
 
 /**
- * In some cases we may want to disable observation inside a component's
- * update computation.
- */
-var shouldObserve = true;
-
-/**
  * Observer class that is attached to each observed
  * object. Once attached, the observer converts the target
  * object's property keys into getter/setters that
@@ -1141,17 +1127,25 @@ var shouldObserve = true;
  */
 var Observer = function Observer (value) {
   this.value = value;
+  // 数组、对象的依赖实例在这里定义，对象属性的依赖实例在defineReactive中定义
+  // 对象的并不会用到
   this.dep = new Dep();
   this.vmCount = 0;
+  // 给value新增一个__ob__属性，值为该value的Observer实例
+  // 相当于为value打上标记，表示它已经转化为响应式了，避免重复操作
   def(value, '__ob__', this);
+  // 处理数组的响应式
   if (Array.isArray(value)) {
+    // 是否可以通过__proto__获取原型
     if (hasProto) {
       protoAugment(value, arrayMethods);
     } else {
       copyAugment(value, arrayMethods, arrayKeys);
     }
+    // 递归遍历数组
     this.observeArray(value);
   } else {
+    // 处理对象的响应式
     this.walk(value);
   }
 };
@@ -1164,7 +1158,7 @@ var Observer = function Observer (value) {
 Observer.prototype.walk = function walk (obj) {
   var keys = Object.keys(obj);
   for (var i = 0; i < keys.length; i++) {
-    defineReactive$$1(obj, keys[i]);
+    defineReactive(obj, keys[i]);
   }
 };
 
@@ -1183,6 +1177,7 @@ Observer.prototype.observeArray = function observeArray (items) {
  * Augment a target Object or Array by intercepting
  * the prototype chain using __proto__
  */
+// 设置数组的中间代理对象原型
 function protoAugment (target, src) {
   /* eslint-disable no-proto */
   target.__proto__ = src;
@@ -1194,6 +1189,7 @@ function protoAugment (target, src) {
  * hidden properties.
  */
 /* istanbul ignore next */
+// 不支持__proto__的环境, 则直接拷贝到数组实例上
 function copyAugment (target, src, keys) {
   for (var i = 0, l = keys.length; i < l; i++) {
     var key = keys[i];
@@ -1207,21 +1203,24 @@ function copyAugment (target, src, keys) {
  * or the existing observer if the value already has one.
  */
 function observe (value, asRootData) {
+  // 原始类型或者VNode跳过
   if (!isObject(value) || value instanceof VNode) {
     return
   }
   var ob;
+  // 是否已处理过响应式
   if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
     ob = value.__ob__;
   } else if (
-    shouldObserve &&
-    !isServerRendering() &&
-    (Array.isArray(value) || isPlainObject(value)) &&
-    Object.isExtensible(value) &&
-    !value._isVue
+      // 是否应该响应式
+    !isServerRendering() && /// 是否是服务端渲染
+    (Array.isArray(value) || isPlainObject(value)) && // 是否是数组或者对象，排除Set、Map等其他对象
+    Object.isExtensible(value) && // 是否可以扩展
+    !value._isVue // 不是Vue构造函数
   ) {
     ob = new Observer(value);
   }
+  // 根对象，实例数量加一
   if (asRootData && ob) {
     ob.vmCount++;
   }
@@ -1231,15 +1230,16 @@ function observe (value, asRootData) {
 /**
  * Define a reactive property on an Object.
  */
-function defineReactive$$1 (
+function defineReactive (
   obj,
   key,
   val,
   customSetter,
   shallow
 ) {
+  // 对象属性的依赖实例
   var dep = new Dep();
-
+  // 对象属性不可配置
   var property = Object.getOwnPropertyDescriptor(obj, key);
   if (property && property.configurable === false) {
     return
@@ -1248,11 +1248,16 @@ function defineReactive$$1 (
   // cater for pre-defined getter/setters
   var getter = property && property.get;
   var setter = property && property.set;
+  // 处理没有传入具体的值
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key];
   }
-
+  // ⚠️
+  // 大部分情况shallow默认是false的，即默认递归observe。
+  // - 当val是数组时，childOb被用来向当前watcher收集依赖
+  // - 当val是普通对象时，set/del函数也会用childOb来通知val的属性添加/删除
   var childOb = !shallow && observe(val);
+  // 监听get, 收集依赖
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
@@ -1260,26 +1265,37 @@ function defineReactive$$1 (
       var value = getter ? getter.call(obj) : val;
       if (Dep.target) {
         dep.depend();
+        // 现在问题是为什么要依赖 childOb 呢？
+        // 考虑到如果 value 是数组，那么 value 的 push/shift 之类的操作，
+        // 是触发不了下面的 setter 的，即 dep.depend 在这种情况不会被调用。
+        // 此时，childOb 即value这个数组对应的 ob，数组的操作会通知到childOb，
+        // 所以可以替代 dep 来通知 watcher。
         if (childOb) {
+          // 数组的依赖收集也是在get中，因为递归数组优先
           childOb.dep.depend();
           if (Array.isArray(value)) {
+            // 嵌套数组，都会把引用当前这个属性的实例watcher收集为watcher
             dependArray(value);
           }
         }
       }
       return value
     },
+    // 
     set: function reactiveSetter (newVal) {
       var value = getter ? getter.call(obj) : val;
       /* eslint-disable no-self-compare */
+      // 排除NaN
       if (newVal === value || (newVal !== newVal && value !== value)) {
         return
       }
       /* eslint-enable no-self-compare */
+      /** 自定义设置器，比如修改props时，开发环境打印警告 */
       if (process.env.NODE_ENV !== 'production' && customSetter) {
         customSetter();
       }
       // #7981: for accessor properties without setter
+      // 访问器属性没有setter
       if (getter && !setter) { return }
       if (setter) {
         setter.call(obj, newVal);
@@ -1287,6 +1303,7 @@ function defineReactive$$1 (
         val = newVal;
       }
       childOb = !shallow && observe(newVal);
+      // 触发依赖更新
       dep.notify();
     }
   });
@@ -1298,20 +1315,24 @@ function defineReactive$$1 (
  * already exist.
  */
 function set (target, key, val) {
+  // isUndef：判断undefined isPrimitive: 判断原始值
   if (process.env.NODE_ENV !== 'production' &&
     (isUndef(target) || isPrimitive(target))
   ) {
     warn(("Cannot set reactive property on undefined, null, or primitive value: " + ((target))));
   }
+  // 处理数组
   if (Array.isArray(target) && isValidArrayIndex(key)) {
     target.length = Math.max(target.length, key);
     target.splice(key, 1, val);
     return val
   }
+  // 处理对象
   if (key in target && !(key in Object.prototype)) {
     target[key] = val;
     return val
   }
+  // 目标对象不能是vue实例或者vue实例根数据
   var ob = (target).__ob__;
   if (target._isVue || (ob && ob.vmCount)) {
     process.env.NODE_ENV !== 'production' && warn(
@@ -1320,11 +1341,13 @@ function set (target, key, val) {
     );
     return val
   }
+  // 不是响应式对象
   if (!ob) {
     target[key] = val;
     return val
   }
-  defineReactive$$1(ob.value, key, val);
+  defineReactive(ob.value, key, val);
+  // 通知更新
   ob.dep.notify();
   return val
 }
@@ -1332,6 +1355,29 @@ function set (target, key, val) {
 /**
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
+ */
+/**
+ * 举个例子，
+ * data() {
+ *  return {
+ *    test: [
+ *       [],
+ *       []
+ *    ]
+ *  }
+ * }
+ * 在VUE2中，如果模版使用了test这个属性，那么不管test数组中的嵌套数组有没有被用到，都会把用到test属性的
+ * 组件实例对应的依赖收集为自己的依赖。这种情况下，执行test[0].push(3)原则上是不需要更新视图的，事实上却重新更新了视图。
+ * 这是VUE2响应式的一个缺陷
+ * 
+ * test: [
+ *  {
+ *    name: 'fenggp'
+ *  }
+ * ]
+ * 这种情况下只要没有引用到name属性，那么执行test[0].name = 'test'时不会更新视图，由此可见Object和Array的区别
+ * 
+ * VUE3解决了这个问题，只要模版中没有用到的，就不会被错误的收集依赖
  */
 function dependArray (value) {
   for (var e = (void 0), i = 0, l = value.length; i < l; i++) {
@@ -1349,6 +1395,7 @@ function dependArray (value) {
  * Option overwriting strategies are functions that handle
  * how to merge a parent option value and a child option
  * value into the final value.
+ * 组件选项合并策略
  */
 var strats = config.optionMergeStrategies;
 
@@ -1603,15 +1650,13 @@ function assertObjectType (name, value, vm) {
 
 /*  */
 
-/*  */
-
-/*  */
-
-var callbacks = [];
+var callbacks = []; // 回调队列
 
 function flushCallbacks () {
+  // 复制备份并清空回调队列，防止nextick中包含nexttick出现问题
   var copies = callbacks.slice(0);
   callbacks.length = 0;
+  // 遍历执行回调
   for (var i = 0; i < copies.length; i++) {
     copies[i]();
   }
@@ -1624,6 +1669,7 @@ function flushCallbacks () {
 // completely stops working after triggering a few times... so, if native
 // Promise is available, we will use it:
 /* istanbul ignore next, $flow-disable-line */
+// 能力检测：promise > mutationObserver > setTmmidiate > setTimeout
 if (typeof Promise !== 'undefined' && isNative(Promise)) ; else if (!isIE && typeof MutationObserver !== 'undefined' && (
   isNative(MutationObserver) ||
   // PhantomJS and iOS 7.x
@@ -1642,10 +1688,9 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) ; else if (!isIE && typ
 
 /*  */
 
-/*  */
-
 // these are reserved for web because they are directly compiled away
 // during template compilation
+// 是否是原生保留属性
 var isReservedAttr = makeMap('style,class');
 
 // attributes that should be using props for binding
@@ -1673,9 +1718,7 @@ var isBooleanAttr = makeMap(
 );
 
 /*  */
-
-/*  */
-
+// 是否是原生HTML标签
 var isHTMLTag = makeMap(
   'html,body,base,head,link,meta,style,title,' +
   'address,article,aside,footer,header,h1,h2,h3,h4,h5,h6,hgroup,nav,section,' +
@@ -1692,6 +1735,7 @@ var isHTMLTag = makeMap(
 
 // this map is intentionally selective, only covering SVG elements that may
 // contain child elements.
+// 是否是SVG标签
 var isSVG = makeMap(
   'svg,animate,circle,clippath,cursor,defs,desc,ellipse,filter,font-face,' +
   'foreignobject,g,glyph,image,line,marker,mask,missing-glyph,path,pattern,' +
@@ -1700,11 +1744,11 @@ var isSVG = makeMap(
 );
 
 var isPreTag = function (tag) { return tag === 'pre'; };
-
+// 是否是原生保留标签
 var isReservedTag = function (tag) {
   return isHTMLTag(tag) || isSVG(tag)
 };
-
+// 获取标签明明空间
 function getTagNamespace (tag) {
   if (isSVG(tag)) {
     return 'svg'
@@ -1719,9 +1763,7 @@ function getTagNamespace (tag) {
 var isTextInputType = makeMap('text,number,password,search,email,tel,url');
 
 /*  */
-
-/*  */
-
+// 过滤器解析器
 var validDivisionCharRE = /[\w).+\-_$\]]/;
 
 function parseFilters (exp) {
@@ -1884,7 +1926,7 @@ function pluckModuleFunction (
     ? modules.map(function (m) { return m[key]; }).filter(function (_) { return _; })
     : []
 }
-
+// 为抽象语法树节点添加props属性
 function addProp (el, name, value, range, dynamic) {
   (el.props || (el.props = [])).push(rangeSetItem({ name: name, value: value, dynamic: dynamic }, range));
   el.plain = false;
@@ -1903,7 +1945,7 @@ function addRawAttr (el, name, value, range) {
   el.attrsMap[name] = value;
   el.attrsList.push(rangeSetItem({ name: name, value: value }, range));
 }
-
+// 添加指令
 function addDirective (
   el,
   name,
@@ -2113,7 +2155,7 @@ function transformNode (el, options) {
     }
   }
   if (staticClass) {
-    el.staticClass = JSON.stringify(staticClass);
+    el.staticClass = JSON.stringify(staticClass.replace(/\s+/g, ' ').trim());
   }
   var classBinding = getBindingAttr(el, 'class', false /* getStatic */);
   if (classBinding) {
@@ -2203,6 +2245,7 @@ var style = {
 /**
  * Cross-platform code generation for component v-model
  */
+// 组件v-model解析
 function genComponentModel (
   el,
   value,
@@ -2349,7 +2392,7 @@ function parseString (chr) {
 /*  */
 
 var onRE = /^@|^v-on:/;
-var dirRE = /^v-|^@|^:|^#/;
+var dirRE =  /^v-|^@|^:|^#/;
 var forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/;
 var forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/;
 var stripParensRE = /^\(|\)$/g;
@@ -2384,7 +2427,7 @@ var maybeComponent;
 function createASTElement (
   tag,
   attrs,
-  parent
+  parent // 
 ) {
   return {
     type: 1,
@@ -2538,6 +2581,10 @@ function parse (
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
+    // 当解析到开始标签时，调用该函数
+    // tag: 标签名
+    // attrs: 标签属性
+    // unary: 标签是否闭合
     start: function start (tag, attrs, unary, start$1, end) {
       // check namespace.
       // inherit parent ns if there is one
@@ -2598,9 +2645,11 @@ function parse (
           inVPre = true;
         }
       }
+
       if (platformIsPreTag(element.tag)) {
         inPre = true;
       }
+
       if (inVPre) {
         processRawAttrs(element);
       } else if (!element.processed) {
@@ -2624,7 +2673,7 @@ function parse (
         closeElement(element);
       }
     },
-
+    // 当解析到结束标签时，调用该函数
     end: function end (tag, start, end$1) {
       var element = stack[stack.length - 1];
       // pop stack
@@ -2635,8 +2684,10 @@ function parse (
       }
       closeElement(element);
     },
-
+    // 当解析到文本时，调用该函数
+    // 根据文本是否包含变量再细化为创建含有变量的AST节点和不包含变量的AST节点
     chars: function chars (text, start, end) {
+      // 打印警告
       if (!currentParent) {
         if (process.env.NODE_ENV !== 'production') {
           if (text === template) {
@@ -2685,14 +2736,30 @@ function parse (
         }
         var res;
         var child;
+        // 包含变量的文本
         if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
+          /**
+           * let res = parseText(text)
+           * res = {
+           *     expression:"我叫"+_s(name)+"，我今年"+_s(age)+"岁了",
+           *     tokens:[
+           *         "我叫",
+           *         {'@binding': name },
+           *         "，我今年"
+           *         {'@binding': age },
+           *       "岁了"
+           *     ]
+           * }
+           */
           child = {
             type: 2,
             expression: res.expression,
             tokens: res.tokens,
             text: text
           };
-        } else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
+        }
+        // 不包含变量的文本
+        else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
           child = {
             type: 3,
             text: text
@@ -2707,6 +2774,7 @@ function parse (
         }
       }
     },
+    // 当解析到注释时，调用该函数
     comment: function comment (text, start, end) {
       // adding anything as a sibling to the root node is forbidden
       // comments should still be allowed, but ignored
@@ -2911,8 +2979,8 @@ function addIfCondition (el, condition) {
 }
 
 function processOnce (el) {
-  var once$$1 = getAndRemoveAttr(el, 'v-once');
-  if (once$$1 != null) {
+  var once = getAndRemoveAttr(el, 'v-once');
+  if (once != null) {
     el.once = true;
   }
 }
@@ -3088,6 +3156,7 @@ function processAttrs (el) {
   for (i = 0, l = list.length; i < l; i++) {
     name = rawName = list[i].name;
     value = list[i].value;
+    // Vue内部指令，以v-、@、:开头
     if (dirRE.test(name)) {
       // mark element as dynamic
       el.hasBindings = true;
@@ -3097,6 +3166,7 @@ function processAttrs (el) {
       if (modifiers) {
         name = name.replace(modifierRE, '');
       }
+      // v-bind
       if (bindRE.test(name)) { // v-bind
         name = name.replace(bindRE, '');
         value = parseFilters(value);
@@ -3165,14 +3235,18 @@ function processAttrs (el) {
         } else {
           addAttr(el, name, value, list[i], isDynamic);
         }
-      } else if (onRE.test(name)) { // v-on
+      }
+      // v-on
+      else if (onRE.test(name)) { // v-on
         name = name.replace(onRE, '');
         isDynamic = dynamicArgRE.test(name);
         if (isDynamic) {
           name = name.slice(1, -1);
         }
         addHandler(el, name, value, modifiers, false, warn$1, list[i], isDynamic);
-      } else { // normal directives
+      }
+      // 普通
+      else { // normal directives
         name = name.replace(dirRE, '');
         // parse arg
         var argMatch = name.match(argRE);
@@ -3190,7 +3264,9 @@ function processAttrs (el) {
           checkForAliasModel(el, value);
         }
       }
-    } else {
+    }
+    // 非Vue内部指令
+    else {
       // literal attribute
       if (process.env.NODE_ENV !== 'production') {
         var res = parseText(value, delimiters);
@@ -3383,7 +3459,7 @@ var warn$2;
 // in some cases, the event used has to be determined at runtime
 // so we used some reserved tokens during compile.
 var RANGE_TOKEN = '__r';
-
+// v-model指令的实现
 function model$1 (
   el,
   dir,
@@ -3394,7 +3470,7 @@ function model$1 (
   var modifiers = dir.modifiers;
   var tag = el.tag;
   var type = el.attrsMap.type;
-
+  // type: file不能使用v-model
   if (process.env.NODE_ENV !== 'production') {
     // inputs with type="file" are read only and setting the input's
     // value will throw an error.
@@ -3406,7 +3482,7 @@ function model$1 (
       );
     }
   }
-
+  // 根据v-model作用的对象不同，做不同的处理
   if (el.component) {
     genComponentModel(el, value, modifiers);
     // component v-model doesn't need extra runtime
@@ -3436,7 +3512,7 @@ function model$1 (
   // ensure runtime directive metadata
   return true
 }
-
+// checkbox的v-model绑定
 function genCheckboxModel (
   el,
   value,
@@ -3467,7 +3543,7 @@ function genCheckboxModel (
     null, true
   );
 }
-
+// radio的v-model绑定
 function genRadioModel (
   el,
   value,
@@ -3479,7 +3555,7 @@ function genRadioModel (
   addProp(el, 'checked', ("_q(" + value + "," + valueBinding + ")"));
   addHandler(el, 'change', genAssignmentCode(value, valueBinding), null, true);
 }
-
+// select的v-model绑定
 function genSelect (
   el,
   value,
@@ -3496,14 +3572,14 @@ function genSelect (
   code = code + " " + (genAssignmentCode(value, assignment));
   addHandler(el, 'change', code, null, true);
 }
-
+// input、textarea的v-model绑定
 function genDefaultModel (
   el,
   value,
   modifiers
 ) {
   var type = el.attrsMap.type;
-
+  // v-bind:value和v-model不能同时使用
   // warn if v-bind:value conflicts with v-model
   // except for inputs with v-bind:type
   if (process.env.NODE_ENV !== 'production') {
@@ -3539,11 +3615,13 @@ function genDefaultModel (
   }
 
   var code = genAssignmentCode(value, valueExpression);
+  // 处理输入法编辑器
   if (needCompositionGuard) {
     code = "if($event.target.composing)return;" + code;
   }
-
+  // 新增props属性
   addProp(el, 'value', ("(" + value + ")"));
+  // 新增事件监听
   addHandler(el, event, code, null, true);
   if (trim || number) {
     addHandler(el, 'blur', '$forceUpdate()');
@@ -3610,8 +3688,10 @@ function optimize (root, options) {
   isStaticKey = genStaticKeysCached(options.staticKeys || '');
   isPlatformReservedTag = options.isReservedTag || no;
   // first pass: mark all non-static nodes.
+  // 标记所有的静态节点
   markStatic(root);
   // second pass: mark static roots.
+  // 标记静态根节点
   markStaticRoots(root, false);
 }
 
@@ -3621,7 +3701,7 @@ function genStaticKeys$1 (keys) {
     (keys ? ',' + keys : '')
   )
 }
-
+// 标记静态节点
 function markStatic (node) {
   node.static = isStatic(node);
   if (node.type === 1) {
@@ -3635,13 +3715,16 @@ function markStatic (node) {
     ) {
       return
     }
+    // 递归遍历处理子节点
     for (var i = 0, l = node.children.length; i < l; i++) {
       var child = node.children[i];
       markStatic(child);
+      // 子节点有一个不是静态节点，则其父节点也不是静态节点
       if (!child.static) {
         node.static = false;
       }
     }
+    // 遍历v-if、v-else-if、v-else的节点
     if (node.ifConditions) {
       for (var i$1 = 1, l$1 = node.ifConditions.length; i$1 < l$1; i$1++) {
         var block = node.ifConditions[i$1].block;
@@ -3653,12 +3736,19 @@ function markStatic (node) {
     }
   }
 }
-
+// 标记静态根节点
 function markStaticRoots (node, isInFor) {
   if (node.type === 1) {
     if (node.static || node.once) {
       node.staticInFor = isInFor;
     }
+    /**
+     * 一个节点要想成为静态根节点，它必须满足以下要求：
+     * 节点本身必须是静态节点；
+     * 必须拥有子节点 children；
+     * 子节点不能只是只有一个文本节点；
+     */
+    // 否则优化成本大于优化后带来的收益
     // For a node to qualify as a static root, it should have children that
     // are not just static text. Otherwise the cost of hoisting out will
     // outweigh the benefits and it's better off to just always render it fresh.
@@ -3671,6 +3761,7 @@ function markStaticRoots (node, isInFor) {
     } else {
       node.staticRoot = false;
     }
+    // 递归遍历子节点
     if (node.children) {
       for (var i = 0, l = node.children.length; i < l; i++) {
         markStaticRoots(node.children[i], isInFor || !!node.for);
@@ -3683,7 +3774,7 @@ function markStaticRoots (node, isInFor) {
     }
   }
 }
-
+// 当前节点是否是静态节点
 function isStatic (node) {
   if (node.type === 2) { // expression
     return false
@@ -3691,6 +3782,7 @@ function isStatic (node) {
   if (node.type === 3) { // text
     return true
   }
+  // type === 1：元素节点
   return !!(node.pre || (
     !node.hasBindings && // no dynamic bindings
     !node.if && !node.for && // not v-if or v-for or v-else
@@ -3888,7 +3980,7 @@ function on (el, dir) {
 
 /*  */
 
-function bind$1 (el, dir) {
+function bind (el, dir) {
   el.wrapData = function (code) {
     return ("_b(" + code + ",'" + (el.tag) + "'," + (dir.value) + "," + (dir.modifiers && dir.modifiers.prop ? 'true' : 'false') + (dir.modifiers && dir.modifiers.sync ? ',true' : '') + ")")
   };
@@ -3898,7 +3990,7 @@ function bind$1 (el, dir) {
 
 var baseDirectives = {
   on: on,
-  bind: bind$1,
+  bind: bind,
   cloak: noop
 };
 
@@ -4171,7 +4263,7 @@ function genData$2 (el, state) {
   }
   return data
 }
-
+// 生成指令对应的字符串代码
 function genDirectives (el, state) {
   var dirs = el.directives;
   if (!dirs) { return }
@@ -4403,15 +4495,15 @@ function genSlot (el, state) {
         dynamic: attr.dynamic
       }); }))
     : null;
-  var bind$$1 = el.attrsMap['v-bind'];
-  if ((attrs || bind$$1) && !children) {
+  var bind = el.attrsMap['v-bind'];
+  if ((attrs || bind) && !children) {
     res += ",null";
   }
   if (attrs) {
     res += "," + attrs;
   }
-  if (bind$$1) {
-    res += (attrs ? '' : ',null') + "," + bind$$1;
+  if (bind) {
+    res += (attrs ? '' : ',null') + "," + bind;
   }
   return res + ')'
 }
@@ -4431,7 +4523,7 @@ function genProps (props) {
   var dynamicProps = "";
   for (var i = 0; i < props.length; i++) {
     var prop = props[i];
-    var value = transformSpecialNewlines(prop.value);
+    var value =  transformSpecialNewlines(prop.value);
     if (prop.dynamic) {
       dynamicProps += (prop.name) + "," + value + ",";
     } else {
@@ -4637,7 +4729,7 @@ function repeat$1 (str, n) {
 /*  */
 
 
-
+// 字符串转函数
 function createFunction (code, errors) {
   try {
     return new Function(code)
@@ -4656,7 +4748,7 @@ function createCompileToFunctionFn (compile) {
     vm
   ) {
     options = extend({}, options);
-    var warn$$1 = options.warn || warn;
+    var warn$1 = options.warn || warn;
     delete options.warn;
 
     /* istanbul ignore if */
@@ -4666,7 +4758,7 @@ function createCompileToFunctionFn (compile) {
         new Function('return 1');
       } catch (e) {
         if (e.toString().match(/unsafe-eval|CSP/)) {
-          warn$$1(
+          warn$1(
             'It seems you are using the standalone build of Vue.js in an ' +
             'environment with Content Security Policy that prohibits unsafe-eval. ' +
             'The template compiler cannot work in this environment. Consider ' +
@@ -4693,14 +4785,14 @@ function createCompileToFunctionFn (compile) {
       if (compiled.errors && compiled.errors.length) {
         if (options.outputSourceRange) {
           compiled.errors.forEach(function (e) {
-            warn$$1(
+            warn$1(
               "Error compiling template:\n\n" + (e.msg) + "\n\n" +
               generateCodeFrame(template, e.start, e.end),
               vm
             );
           });
         } else {
-          warn$$1(
+          warn$1(
             "Error compiling template:\n\n" + template + "\n\n" +
             compiled.errors.map(function (e) { return ("- " + e); }).join('\n') + '\n',
             vm
@@ -4730,7 +4822,7 @@ function createCompileToFunctionFn (compile) {
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production') {
       if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
-        warn$$1(
+        warn$1(
           "Failed to generate render function:\n\n" +
           fnGenErrors.map(function (ref) {
             var err = ref.err;
@@ -4828,10 +4920,13 @@ var createCompiler = createCompilerCreator(function baseCompile (
   template,
   options
 ) {
+  // 模版解析阶段，生成抽象语法树AST
   var ast = parse(template.trim(), options);
+  // 优化阶段，遍历AST，找出静态节点，打上标签
   if (options.optimize !== false) {
     optimize(ast, options);
   }
+  // 代码生成阶段，将AST转换为渲染函数
   var code = generate(ast, options);
   return {
     ast: ast,
@@ -5388,11 +5483,9 @@ var ref$1 = createCompiler$1(baseOptions);
 var compile$1 = ref$1.compile;
 var compileToFunctions$1 = ref$1.compileToFunctions;
 
-/*  */
-
-exports.parseComponent = parseComponent;
 exports.compile = compile;
 exports.compileToFunctions = compileToFunctions;
+exports.generateCodeFrame = generateCodeFrame;
+exports.parseComponent = parseComponent;
 exports.ssrCompile = compile$1;
 exports.ssrCompileToFunctions = compileToFunctions$1;
-exports.generateCodeFrame = generateCodeFrame;

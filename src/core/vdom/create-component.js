@@ -27,11 +27,6 @@ import {
   deactivateChildComponent
 } from '../instance/lifecycle'
 
-import {
-  isRecyclableComponent,
-  renderRecyclableComponentTemplate
-} from 'weex/runtime/recycle-list/render-component-template'
-
 // inline hooks to be invoked on component VNodes during patch
 // vue虚拟DOM依赖的开源库的hook函数
 const componentVNodeHooks = {
@@ -165,7 +160,8 @@ export function createComponent (
   }
 
   // extract props
-  // props处理
+  // props处理, 处理父组件传给子组件的props绑定，生成propsData对象，
+  // 子组件实例化时，会用propsData去初始化props
   const propsData = extractPropsFromVNodeData(data, Ctor, tag)
 
   // functional component
@@ -201,8 +197,9 @@ export function createComponent (
   const name = Ctor.options.name || tag
   const vnode = new VNode(
     `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
-    data, undefined, undefined, undefined, context,
-    { Ctor, propsData, listeners, tag, children },
+    data, undefined, undefined, undefined,
+    context, // 上下文
+    { Ctor, propsData, listeners, tag, children },  // componentOptions
     asyncFactory
   )
 

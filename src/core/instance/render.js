@@ -29,11 +29,11 @@ export function initRender (vm: Component) {
   // args order: tag, data, children, normalizationType, alwaysNormalize
   // internal version is used by render functions compiled from templates
   // 这个render函数是给模版编译的render函数调用
-  vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false)
+  vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false /* alwaysNormalize */)
   // normalization is always applied for the public version, used in
   // user-written render functions.
   // 这个render函数是给我们手写的render函数调用的
-  vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
+  vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true /* alwaysNormalize */)
 
   // $attrs & $listeners are exposed for easier HOC creation.
   // they need to be reactive so that HOCs using them are always updated
@@ -54,16 +54,18 @@ export function initRender (vm: Component) {
     defineReactive(vm, '$listeners', options._parentListeners || emptyObject, null, true)
   }
 }
-
+// 设置当前正在render的实例
 export let currentRenderingInstance: Component | null = null
 
 // for testing only
+// 设置当前正在render的实例
 export function setCurrentRenderingInstance (vm: Component) {
   currentRenderingInstance = vm
 }
 
 export function renderMixin (Vue: Class<Component>) {
   // install runtime convenience helpers
+  // 安装运行时的工具函数
   installRenderHelpers(Vue.prototype)
 
   Vue.prototype.$nextTick = function (fn: Function) {
@@ -95,7 +97,7 @@ export function renderMixin (Vue: Class<Component>) {
       /**
        * 执行render函数，生成虚拟DOM
        * vm._renderProxy，render函数执行上下文
-       * vm.$createElement，我们平时写render函数时接收的参数，
+       * vm.$createElement，我们平时写render函数时接收的参数
        */
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {

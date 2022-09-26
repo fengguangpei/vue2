@@ -398,6 +398,7 @@ function assertObjectType (name: string, value: any, vm: ?Component) {
 /**
  * Merge two option objects into a new one.
  * Core utility used in both instantiation and inheritance.
+ * new Vue和Vue.extends时都会用到
  */
 export function mergeOptions (
   parent: Object,
@@ -412,11 +413,12 @@ export function mergeOptions (
   if (typeof child === 'function') {
     child = child.options
   }
-  // 格式化props
+  // 格式化props，转为对象格式
   normalizeProps(child, vm)
-  // 格式化依赖注入
+  // 格式化依赖注入，转为对象模式
   normalizeInject(child, vm)
-  // 格式化指令
+  // 格式化指令，指令可以是对象或者函数，同意转为对象格式
+  // 【官网】在很多时候，你可能想在 bind 和 update 时触发相同行为，而不关心其它的钩子，这是提供一个函数即可
   normalizeDirectives(child)
 
   // Apply extends and mixins on the child options,
@@ -438,9 +440,11 @@ export function mergeOptions (
 
   const options = {}
   let key
+  // 把Vue构造函数的options合并到options
   for (key in parent) {
     mergeField(key)
   }
+  // 把实例化时的options合并到options
   for (key in child) {
     if (!hasOwn(parent, key)) {
       mergeField(key)
@@ -452,6 +456,7 @@ export function mergeOptions (
     const strat = strats[key] || defaultStrat
     options[key] = strat(parent[key], child[key], vm, key)
   }
+  // 返回合并好的options
   return options
 }
 

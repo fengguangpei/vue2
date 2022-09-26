@@ -13,19 +13,16 @@ import { extend, mergeOptions, formatComponentName } from '../util/index'
 let uid = 0
 /** Vue构造函数初始化函数 */
 export function initMixin (Vue) {
+  // _uid
+  // _isVue
+  // $options
+  // _renderProxy
+  // _self 当前实例
   Vue.prototype._init = function (options) {
     // 当前实例
     const vm = this
     // a uid
     vm._uid = uid++
-
-    let startTag, endTag
-    /* istanbul ignore if */
-    if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
-      startTag = `vue-perf-start:${vm._uid}`
-      endTag = `vue-perf-end:${vm._uid}`
-      mark(startTag)
-    }
 
     // a flag to avoid this being observed
     vm._isVue = true
@@ -39,12 +36,16 @@ export function initMixin (Vue) {
     } else {
       // new Vue()的时候走这里
       vm.$options = mergeOptions(
+        // vm.constructor就是Vue构造函数
         resolveConstructorOptions(vm.constructor),
         options || {},
         vm
       )
     }
     /* istanbul ignore else */
+    // 为vm._renderProxy设置值，这个值就是render函数执行时的指定对象
+    // vnode = render.call(vm._renderProxy, vm.$createElement)
+    // 这也是为什么我们render函数的this可以通过this访问实例属性
     if (process.env.NODE_ENV !== 'production') {
       initProxy(vm)
     } else {
@@ -52,19 +53,35 @@ export function initMixin (Vue) {
     }
     // expose real self
     vm._self = vm
-    // 声明周期相关
+    // 声明周期相关, 新增了一批属性
+    // $parent、$rout $children $refs _watcher _inactive _directInactive _isMounted _isDestroyed _isBeingDestroyed
     initLifecycle(vm)
     // 事件处理相关
+    // _events
     initEvents(vm)
     // render相关
+    // _vnode、_staticTrees、$vnode、$slot、$scopeSlots
+    // 这个render函数是给模版编译的render函数调用
+    // vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false)
+    // 这个render函数是给我们手写的render函数调用的
+    // vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
+    // $attrs、$listeners
     initRender(vm)
     // 调用beforeCreate钩子函数
+    // beforeCreate只能访问上面的属性
     callHook(vm, 'beforeCreate')
     // 初始化依赖注入
+    // inject会被遍历，并使用defineReactive(vm, key, result[key])设置到实例上
     initInjections(vm) // resolve injections before data/props
-    // 初始化数据：props、methods、data、computed、watch
+    // 初始化数据：initProps()、initMethods()、initData()、initComputed()、initWatch()
+    // _watchers、_data, _props, $options._propKeys, _computedWatchers, 
+    // proxy(vm, '_props', key)
+    // proxy(vm, '_data', key)
+    // 设置空函数，绑定当前实例为this
+    // 方法可以访问实例属性的原因：vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
     initState(vm)
     // 初始化依赖注入
+    // _provided
     initProvide(vm) // resolve provide after data/props
     // 调用created钩子函数
     callHook(vm, 'created')
@@ -75,7 +92,8 @@ export function initMixin (Vue) {
       mark(endTag)
       measure(`vue ${vm._name} init`, startTag, endTag)
     }
-
+    // 挂载组件
+    // 这里的$mount方法是在runtime目录下添加的web/runtime/index.js
     if (vm.$options.el) {
       vm.$mount(vm.$options.el)
     }
@@ -104,7 +122,10 @@ export function initInternalComponent (vm: Component, options: InternalComponent
 }
 
 export function resolveConstructorOptions (Ctor: Class<Component>) {
+  // 这里的options是在 initGlobalAPI() 时注入的，格式如下
+  // { component, directive, filter }
   let options = Ctor.options
+  // 判断当前构造函数是否是继承Vue
   if (Ctor.super) {
     const superOptions = resolveConstructorOptions(Ctor.super)
     const cachedSuperOptions = Ctor.superOptions

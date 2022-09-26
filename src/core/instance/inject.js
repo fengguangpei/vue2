@@ -55,6 +55,8 @@ export function resolveInject (inject: any, vm: Component): ?Object {
       let source = vm
       // 通过key设置value
       while (source) {
+        // 这里没有直接从vm.$parent开始查找，是因为inject初始化在provide前面，
+        // 此时当前实例的_provided为undefined
         if (source._provided && hasOwn(source._provided, provideKey)) {
           result[key] = source._provided[provideKey]
           break

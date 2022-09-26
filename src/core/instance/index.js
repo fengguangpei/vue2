@@ -138,8 +138,18 @@ function Vue (options) {
  */
 /** 原型挂载初始化方法 */
 initMixin(Vue)
+// 初始化和数据相关的原型属性和方法
+// Object.defineProperty(Vue.prototype, '$data', dataDef) 代理$data的访问到_data
+// Object.defineProperty(Vue.prototype, '$props', propsDef) 代理$props的访问到_props
+// $set、$delete、$watch、
 stateMixin(Vue)
+// 初始化和事件相关的原型方法
+// $on、$once、$off、$emit
 eventsMixin(Vue)
+// 初始化和组件生命周期相关的方法
+// _update、$forceUpdate、$destroy
 lifecycleMixin(Vue)
+// 初始化和渲染相关的方法
+// $nextTick、_render()、_isMounted、_isDestroyed
 renderMixin(Vue)
 export default Vue

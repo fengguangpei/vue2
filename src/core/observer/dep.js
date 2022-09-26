@@ -57,6 +57,8 @@ Dep.target = null
 // 被收集的依赖的栈
 const targetStack = []
 // 设置当前被收集的依赖-watcher
+// $options.data的函数执行时，会pushTarget()，设置一个空的target，
+// 避免函数执行时访问响应式数据比如props，造成错误的依赖收集
 export function pushTarget (target: ?Watcher) {
   targetStack.push(target)
   Dep.target = target

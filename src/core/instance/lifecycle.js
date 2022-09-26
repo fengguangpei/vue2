@@ -160,7 +160,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     }
   }
 }
-// 挂载组件
+// 挂载组件, $mount方法会调用这个方法
 export function mountComponent (
   vm: Component,
   el: ?Element,

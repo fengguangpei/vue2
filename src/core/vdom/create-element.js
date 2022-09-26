@@ -32,14 +32,16 @@ export function createElement (
   tag: any,
   data: any,
   children: any,
-  normalizationType: any,
+  normalizationType: any, // 区分以何种方式规范children
   alwaysNormalize: boolean
 ): VNode | Array<VNode> {
+  // 如果data没有设置，则第三个参数就是children
   if (Array.isArray(data) || isPrimitive(data)) {
     normalizationType = children
     children = data
     data = undefined
   }
+  // 手写的render函数alwaysNormalize一定为true
   if (isTrue(alwaysNormalize)) {
     normalizationType = ALWAYS_NORMALIZE
   }
@@ -53,7 +55,7 @@ export function _createElement (
   children?: any, // 后代节点
   normalizationType?: number
 ): VNode | Array<VNode> {
-  // 判断data是否响应式的
+  // 判断data是否响应式的，是则直接返回一个空的VNode
   if (isDef(data) && isDef((data: any).__ob__)) {
     process.env.NODE_ENV !== 'production' && warn(
       `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
@@ -86,7 +88,7 @@ export function _createElement (
     }
   }
   // support single function children as default scoped slot
-  // 作用域插槽
+  // 如果children的第一个元素是函数，那么这个函数会被当作作用域插槽，并且抛弃后面的子元素
   if (Array.isArray(children) &&
     typeof children[0] === 'function'
   ) {
@@ -123,6 +125,7 @@ export function _createElement (
     // component组件
     else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
       // component
+      // Ctor：组件
       vnode = createComponent(Ctor, data, context, children, tag)
     }
     // 自定义元素

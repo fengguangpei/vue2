@@ -6,13 +6,14 @@ import { warn, makeMap, isNative } from '../util/index'
 let initProxy
 
 if (process.env.NODE_ENV !== 'production') {
+  // 允许render函数访问的全局属性
   const allowedGlobals = makeMap(
     'Infinity,undefined,NaN,isFinite,isNaN,' +
     'parseFloat,parseInt,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,' +
     'Math,Number,Date,Array,Object,Boolean,String,RegExp,Map,Set,JSON,Intl,BigInt,' +
     'require' // for Webpack/Browserify
   )
-
+  // 访问不存在属性，打印警告
   const warnNonPresent = (target, key) => {
     warn(
       `Property or method "${key}" is not defined on the instance but ` +
@@ -23,7 +24,7 @@ if (process.env.NODE_ENV !== 'production') {
       target
     )
   }
-
+  // 访问Vue保留属性，打印警告
   const warnReservedPrefix = (target, key) => {
     warn(
       `Property "${key}" must be accessed with "$data.${key}" because ` +
@@ -51,7 +52,7 @@ if (process.env.NODE_ENV !== 'production') {
       }
     })
   }
-
+  // 代理监听读取属性，$data内部属性，vm._data才是我们传给组件的data
   const hasHandler = {
     has (target, key) {
       const has = key in target
@@ -64,9 +65,10 @@ if (process.env.NODE_ENV !== 'production') {
       return has || !isAllowed
     }
   }
-
+  // 代理监听读取属性，$data内部属性
   const getHandler = {
     get (target, key) {
+      // 实例不存在指定的属性
       if (typeof key === 'string' && !(key in target)) {
         if (key in target.$data) warnReservedPrefix(target, key)
         else warnNonPresent(target, key)
@@ -82,6 +84,7 @@ if (process.env.NODE_ENV !== 'production') {
       const handlers = options.render && options.render._withStripped
         ? getHandler
         : hasHandler
+      // 代理属性访问，打印警告
       vm._renderProxy = new Proxy(vm, handlers)
     } else {
       vm._renderProxy = vm
