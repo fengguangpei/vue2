@@ -52,7 +52,7 @@ const componentVNodeHooks = {
       child.$mount(hydrating ? vnode.elm : undefined, hydrating)
     }
   },
-
+  // patch比对的hook函数
   prepatch (oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
     const options = vnode.componentOptions
     const child = vnode.componentInstance = oldVnode.componentInstance
@@ -64,7 +64,7 @@ const componentVNodeHooks = {
       options.children // new children
     )
   },
-
+  // 插入的hook函数
   insert (vnode: MountedComponentVNode) {
     const { context, componentInstance } = vnode
     if (!componentInstance._isMounted) {
@@ -84,13 +84,17 @@ const componentVNodeHooks = {
       }
     }
   },
-
+  // 销毁的hook函数
   destroy (vnode: MountedComponentVNode) {
     const { componentInstance } = vnode
+    // 组件是否已经销毁
     if (!componentInstance._isDestroyed) {
+      // 是否在keepalive缓存的组件
       if (!vnode.data.keepAlive) {
+        // 调用组件实例原型上的$destroy方法
         componentInstance.$destroy()
-      } else {
+      }
+      else {
         deactivateChildComponent(componentInstance, true /* direct */)
       }
     }

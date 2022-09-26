@@ -431,11 +431,11 @@ export function createPatchFunction (backend) {
     // to ensure removed elements stay in correct relative positions
     // during leaving transitions
     const canMove = !removeOnly
-
+    // 检查绑定的key是否有重复
     if (process.env.NODE_ENV !== 'production') {
       checkDuplicateKeys(newCh)
     }
-
+    // 循环遍历对比
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
       if (isUndef(oldStartVnode)) {
         oldStartVnode = oldCh[++oldStartIdx] // Vnode has been moved left
@@ -535,7 +535,7 @@ export function createPatchFunction (backend) {
   function patchVnode (
     oldVnode, // 旧虚拟NODE
     vnode, // 新虚拟NODE
-    insertedVnodeQueue,
+    insertedVnodeQueue, // 数组
     ownerArray,
     index,
     removeOnly
@@ -548,7 +548,7 @@ export function createPatchFunction (backend) {
       // clone reused vnode
       vnode = ownerArray[index] = cloneVNode(vnode)
     }
-
+    // 真实的DOM引用
     const elm = vnode.elm = oldVnode.elm
 
     if (isTrue(oldVnode.isAsyncPlaceholder)) {
@@ -564,7 +564,7 @@ export function createPatchFunction (backend) {
     // note we only do this if the vnode is cloned -
     // if the new node is not cloned it means the render functions have been
     // reset by the hot-reload-api and we need to do a proper re-render.
-    // vnode和oldVnode是否都是静态节点
+    // vnode和oldVnode是否都是静态节点且key值一样且新的Vnode是克隆的，或者isOnce为true
     if (isTrue(vnode.isStatic) &&
       isTrue(oldVnode.isStatic) &&
       vnode.key === oldVnode.key &&
@@ -582,6 +582,7 @@ export function createPatchFunction (backend) {
 
     const oldCh = oldVnode.children
     const ch = vnode.children
+    // 执行所有module的update钩子函数，以及用户自定义的update钩子函数
     if (isDef(data) && isPatchable(vnode)) {
       for (i = 0; i < cbs.update.length; ++i) cbs.update[i](oldVnode, vnode)
       if (isDef(i = data.hook) && isDef(i = i.update)) i(oldVnode, vnode)
@@ -616,6 +617,7 @@ export function createPatchFunction (backend) {
     else if (oldVnode.text !== vnode.text) {
       nodeOps.setTextContent(elm, vnode.text)
     }
+    // 执行postpatch这个hook钩子函数，指令和v-model源码中用到
     if (isDef(data)) {
       if (isDef(i = data.hook) && isDef(i = i.postpatch)) i(oldVnode, vnode)
     }

@@ -75,6 +75,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // 如果没有旧的虚拟DOM，则是第一个渲染
     if (!prevVnode) {
       // initial render
+      // 根组件没有使用insert添加到父元素，而是直接替换
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
     }
     // 对比新旧虚拟DOM
@@ -110,7 +111,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // 第一步：从父组件中删除自己
     // 第二步：卸载渲染组件的watcher
     // 第三步：卸载数据相关的watchers
-    // 第四步：调用patch更新视图，删除自己
+    // 第四步：调用patch，从组件树中删除自己
     // 第五步：删除事件绑定$off()
     // 删除一些应用
     const vm: Component = this
@@ -144,7 +145,6 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // call the last hook...
     vm._isDestroyed = true
     // invoke destroy hooks on current rendered tree
-    // 
     vm.__patch__(vm._vnode, null)
     // fire destroyed hook
     callHook(vm, 'destroyed')
@@ -243,13 +243,13 @@ export function mountComponent (
   }
   return vm
 }
-
+// prepatch这个hook会调用这个函数
 export function updateChildComponent (
-  vm: Component,
-  propsData: ?Object,
-  listeners: ?Object,
-  parentVnode: MountedComponentVNode,
-  renderChildren: ?Array<VNode>
+  vm: Component, // componentInstance
+  propsData: ?Object, // 更新后的propsData
+  listeners: ?Object, // 更新后的listeners
+  parentVnode: MountedComponentVNode, // 新的Vnode
+  renderChildren: ?Array<VNode> // 当前Vnode下的children
 ) {
   if (process.env.NODE_ENV !== 'production') {
     isUpdatingChildComponent = true
@@ -294,6 +294,7 @@ export function updateChildComponent (
   vm.$listeners = listeners || emptyObject
 
   // update props
+  // 更新props
   if (propsData && vm.$options.props) {
     toggleObserving(false)
     const props = vm._props
@@ -309,6 +310,7 @@ export function updateChildComponent (
   }
 
   // update listeners
+  // 更新listeners
   listeners = listeners || emptyObject
   const oldListeners = vm.$options._parentListeners
   vm.$options._parentListeners = listeners
