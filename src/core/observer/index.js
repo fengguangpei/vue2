@@ -149,8 +149,8 @@ export function defineReactive (
   obj: Object,
   key: string,
   val: any,
-  customSetter?: ?Function,
-  shallow?: boolean
+  customSetter?: ?Function, // 定义set时执行的拦截器
+  shallow?: boolean // 是否要递归
 ) {
   // 对象属性的依赖实例
   const dep = new Dep()

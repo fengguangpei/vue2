@@ -70,7 +70,7 @@ export default class Watcher {
       this.deep = !!options.deep // 深度监听
       this.user = !!options.user // 用户创建的watcher实例
       this.lazy = !!options.lazy
-      this.sync = !!options.sync
+      this.sync = !!options.sync // 同步更新
       this.before = options.before
     } else {
       // 默认值都是false
