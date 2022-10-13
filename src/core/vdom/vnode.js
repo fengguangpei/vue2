@@ -50,6 +50,15 @@ export default class VNode {
     this.fnOptions = undefined
     this.fnScopeId = undefined
     this.key = data && data.key
+    /**
+     * {
+     *   Ctor: Class<Component>;
+     *   propsData: ?Object;
+     *   listeners: ?Object;
+     *   children: ?Array<VNode>;
+     *   tag?: string;
+     * }
+     */
     this.componentOptions = componentOptions
     this.componentInstance = undefined
     this.parent = undefined

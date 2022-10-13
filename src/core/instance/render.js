@@ -74,8 +74,28 @@ export function renderMixin (Vue: Class<Component>) {
   // 静态render方法，把当前实例渲染成VNode
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
+    // 子组件在父组件中的Vnode，和组件内部render的Vnode不是一回事
+    // 这里的_parentVnode就是子组件在父组件中的Vnode，后面通过_parentVnode即可拿到传给子组件的绑定值
+    // 比如：
+    /**
+     * export default {
+     *  render(h) {
+     *    return h(
+     *      'div',
+     *      [
+     *        h('TestComponent', {
+     *            scopedSlots: {
+     *              default: () => 'Hello world'
+     *            }
+     *        })
+     *      ]
+     *    )
+     *  }
+     * }
+     */
+    // _parentVnode就是h('TestComponent')这个Vnode
     const { render, _parentVnode } = vm.$options
-
+    // 获取父组件传入子组件的作用域插槽
     if (_parentVnode) {
       vm.$scopedSlots = normalizeScopedSlots(
         _parentVnode.data.scopedSlots,
@@ -83,7 +103,6 @@ export function renderMixin (Vue: Class<Component>) {
         vm.$scopedSlots
       )
     }
-
     // set parent vnode. this allows render functions to have access
     // to the data on the placeholder node.
     vm.$vnode = _parentVnode
@@ -135,6 +154,9 @@ export function renderMixin (Vue: Class<Component>) {
       vnode = createEmptyVNode()
     }
     // set parent
+    // 这是一个很细节的点，子组件在父组件中是一个Vnode，子组件内部的render函数是一个Vnode，
+    // 不要误以为两者是一回事
+    // 两者是父子层级关系
     vnode.parent = _parentVnode
     return vnode
   }

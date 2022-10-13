@@ -102,12 +102,13 @@ const componentVNodeHooks = {
 }
 // 待合并的虚拟DOM的钩子函数
 const hooksToMerge = Object.keys(componentVNodeHooks)
+// 为组件生成对应的Vnode
 export function createComponent (
-  Ctor: Class<Component> | Function | Object | void,
-  data: ?VNodeData,
-  context: Component,
-  children: ?Array<VNode>,
-  tag?: string
+  Ctor: Class<Component> | Function | Object | void,  // 组件选项
+  data: ?VNodeData, // data
+  context: Component, // 父实例
+  children: ?Array<VNode>, // children
+  tag?: string  // 在模版中使用的标签字符串
 ): VNode | Array<VNode> | void {
   if (isUndef(Ctor)) {
     return
@@ -218,7 +219,11 @@ export function createComponentInstanceForVnode (
 ): Component {
   const options: InternalComponentOptions = {
     _isComponent: true,
+    // 这里的_parentVnode是父级Vnode，值得注意的是，子组件在父组件中是一个Vnode，
+    // 但子组件实例化时render生成的也是一个Vnode，这个Vnode和代表子组件的Vnode是父子层级关系
+    // 所以这里通过_parentVnode传给子组件内部
     _parentVnode: vnode,
+    // 这里的parent是父组件
     parent
   }
   // check inline-template render functions
@@ -227,6 +232,7 @@ export function createComponentInstanceForVnode (
     options.render = inlineTemplate.render
     options.staticRenderFns = inlineTemplate.staticRenderFns
   }
+  // init逻辑
   return new vnode.componentOptions.Ctor(options)
 }
 // 为VNode的hook安装虚拟DOM的钩子函数

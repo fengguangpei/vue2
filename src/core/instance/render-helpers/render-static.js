@@ -3,6 +3,7 @@
 /**
  * Runtime helper for rendering static trees.
  */
+// 编译静态节点，生成并缓存静态节点Vnode
 export function renderStatic (
   index: number,
   isInFor: boolean
@@ -36,7 +37,7 @@ export function markOnce (
   markStatic(tree, `__once__${index}${key ? `_${key}` : ``}`, true)
   return tree
 }
-
+// 标记静态节点
 function markStatic (
   tree: VNode | Array<VNode>,
   key: string,
@@ -52,7 +53,7 @@ function markStatic (
     markStaticNode(tree, key, isOnce)
   }
 }
-
+// 标记静态节点
 function markStaticNode (node, key, isOnce) {
   node.isStatic = true
   node.key = key

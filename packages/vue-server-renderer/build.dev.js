@@ -507,6 +507,15 @@ var VNode = function VNode (
   this.fnOptions = undefined;
   this.fnScopeId = undefined;
   this.key = data && data.key;
+  /**
+   * {
+   * Ctor: Class<Component>;
+   * propsData: ?Object;
+   * listeners: ?Object;
+   * children: ?Array<VNode>;
+   * tag?: string;
+   * }
+   */
   this.componentOptions = componentOptions;
   this.componentInstance = undefined;
   this.parent = undefined;
@@ -993,6 +1002,8 @@ Dep.target = null;
 // 被收集的依赖的栈
 var targetStack = [];
 // 设置当前被收集的依赖-watcher
+// $options.data的函数执行时，会pushTarget()，设置一个空的target，
+// 避免函数执行时访问响应式数据比如props，造成错误的依赖收集
 function pushTarget (target) {
   targetStack.push(target);
   Dep.target = target;
@@ -1028,30 +1039,30 @@ methodsToPatch.forEach(function (method) {
   // cache original method
   var original = arrayProto[method]; // Array.prototype上的原型方法
   def(arrayMethods, method, function mutator () {
-    var args = [], len = arguments.length;
-    while ( len-- ) args[ len ] = arguments[ len ];
+  var args = [], len = arguments.length;
+  while ( len-- ) args[ len ] = arguments[ len ];
 
-    var result = original.apply(this, args);
-    // Observer实例
-    // 原型方法只能通过实例调用，所以这里的this指向数组
-    var ob = this.__ob__;
-    var inserted;
-    switch (method) {
-      case 'push':
-      case 'unshift':
-        inserted = args;
-        break
-      case 'splice':
-        inserted = args.slice(2);
-        break
-    }
-    // 通过数组的方法新增的元素, 一样需要被响应式监听
-    if (inserted) { ob.observeArray(inserted); }
-    // notify change
-    // 数组的依赖是从Observer实例上获取的
-    ob.dep.notify(); // 触发更新
-    // 返回结果
-    return result
+  var result = original.apply(this, args);
+  // Observer实例
+  // 原型方法只能通过实例调用，所以这里的this指向数组
+  var ob = this.__ob__;
+  var inserted;
+  switch (method) {
+    case 'push':
+    case 'unshift':
+      inserted = args;
+      break
+    case 'splice':
+      inserted = args.slice(2);
+      break
+  }
+  // 通过数组的方法新增的元素, 一样需要被响应式监听
+  if (inserted) { ob.observeArray(inserted); }
+  // notify change
+  // 数组的依赖是从Observer实例上获取的
+  ob.dep.notify(); // 触发更新
+  // 返回结果
+  return result
   });
 });
 
@@ -1184,8 +1195,8 @@ function defineReactive (
   obj,
   key,
   val,
-  customSetter,
-  shallow
+  customSetter, // 定义set时执行的拦截器
+  shallow // 是否要递归
 ) {
   // 对象属性的依赖实例
   var dep = new Dep();
@@ -1718,6 +1729,7 @@ function assertObjectType (name, value, vm) {
 /**
  * Merge two option objects into a new one.
  * Core utility used in both instantiation and inheritance.
+ * new Vue和Vue.extends时都会用到
  */
 function mergeOptions (
   parent,
@@ -1732,11 +1744,12 @@ function mergeOptions (
   if (typeof child === 'function') {
     child = child.options;
   }
-  // 格式化props
+  // 格式化props，转为对象格式
   normalizeProps(child, vm);
-  // 格式化依赖注入
+  // 格式化依赖注入，转为对象模式
   normalizeInject(child, vm);
-  // 格式化指令
+  // 格式化指令，指令可以是对象或者函数，同意转为对象格式
+  // 【官网】在很多时候，你可能想在 bind 和 update 时触发相同行为，而不关心其它的钩子，这是提供一个函数即可
   normalizeDirectives(child);
 
   // Apply extends and mixins on the child options,
@@ -1758,9 +1771,11 @@ function mergeOptions (
 
   var options = {};
   var key;
+  // 把Vue构造函数的options合并到options
   for (key in parent) {
     mergeField(key);
   }
+  // 把实例化时的options合并到options
   for (key in child) {
     if (!hasOwn(parent, key)) {
       mergeField(key);
@@ -1772,6 +1787,7 @@ function mergeOptions (
     var strat = strats[key] || defaultStrat;
     options[key] = strat(parent[key], child[key], vm, key);
   }
+  // 返回合并好的options
   return options
 }
 
@@ -6614,36 +6630,46 @@ function normalizeArrayChildren (children, nestedIndex) {
   var i, c, lastIndex, last;
   for (i = 0; i < children.length; i++) {
     c = children[i]; // 当前节点
+    // 布尔值跳过
     if (isUndef(c) || typeof c === 'boolean') { continue }
     lastIndex = res.length - 1;
     last = res[lastIndex]; // 规范好的最后一个节点
-    //  nested
+    // nested
     if (Array.isArray(c)) {
       if (c.length > 0) {
         c = normalizeArrayChildren(c, ((nestedIndex || '') + "_" + i));
         // merge adjacent text nodes
         // 如果遇到两个连续的text节点，则把他们合并成一个
         if (isTextNode(c[0]) && isTextNode(last)) {
+          // 拼接到规范好的最后一个元素
           res[lastIndex] = createTextVNode(last.text + (c[0]).text);
           c.shift();
         }
+        // 利用apply扁平化嵌套数组
         res.push.apply(res, c);
       }
-    } else if (isPrimitive(c)) {
+    }
+    // 原始值
+    else if (isPrimitive(c)) {
+      // 合并文本节点
       if (isTextNode(last)) {
         // merge adjacent text nodes
         // this is necessary for SSR hydration because text nodes are
         // essentially merged when rendered to HTML strings
         res[lastIndex] = createTextVNode(last.text + c);
-      } else if (c !== '') {
+      }
+      else if (c !== '') {
         // convert primitive to vnode
         res.push(createTextVNode(c));
       }
-    } else {
+    }
+    else {
+      // 合并文本节点
       if (isTextNode(c) && isTextNode(last)) {
         // merge adjacent text nodes
         res[lastIndex] = createTextVNode(last.text + c.text);
-      } else {
+      }
+      else {
         // default key for nested array children (likely generated by v-for)
         if (isTrue(children._isVList) &&
           isDef(c.tag) &&
@@ -6784,6 +6810,7 @@ function renderSSRStyle (
 /* not type checking this file because flow doesn't play well with Proxy */
 
 {
+  // 允许render函数访问的全局属性
   var allowedGlobals = makeMap(
     'Infinity,undefined,NaN,isFinite,isNaN,' +
     'parseFloat,parseInt,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,' +
@@ -6813,40 +6840,6 @@ function renderSSRStyle (
 /*  */
 
 var seenObjects = new _Set();
-
-/**
- * Recursively traverse an object to evoke all converted
- * getters, so that every nested property inside the object
- * is collected as a "deep" dependency.
- */
-// 递归遍历对象，实现深度监听
-function traverse (val) {
-  _traverse(val, seenObjects);
-  seenObjects.clear();
-}
-
-function _traverse (val, seen) {
-  var i, keys;
-  var isA = Array.isArray(val);
-  if ((!isA && !isObject(val)) || Object.isFrozen(val) || val instanceof VNode) {
-    return
-  }
-  if (val.__ob__) {
-    var depId = val.__ob__.dep.id;
-    if (seen.has(depId)) {
-      return
-    }
-    seen.add(depId);
-  }
-  if (isA) {
-    i = val.length;
-    while (i--) { _traverse(val[i], seen); }
-  } else {
-    keys = Object.keys(val);
-    i = keys.length;
-    while (i--) { _traverse(val[keys[i]], seen); }
-  }
-}
 
 {
   var perf = inBrowser && window.performance;
@@ -6940,7 +6933,8 @@ function updateListeners (
 }
 
 /*  */
-
+// props处理, 处理父组件传给子组件的props绑定，生成propsData对象，
+// 子组件实例化时，会用propsData去初始化props
 function extractPropsFromVNodeData (
   data,
   Ctor,
@@ -6949,15 +6943,19 @@ function extractPropsFromVNodeData (
   // we are only extracting raw values here.
   // validation and default values are handled in the child
   // component itself.
+  // 组件props选项
   var propOptions = Ctor.options.props;
   if (isUndef(propOptions)) {
     return
   }
   var res = {};
+  // 这里的data是render函数第二个参数
+  // attrs是普通的HTML属性，props是要传给子组件的props
   var attrs = data.attrs;
   var props = data.props;
   if (isDef(attrs) || isDef(props)) {
     for (var key in propOptions) {
+      // 格式化key，驼峰转kebab-case
       var altKey = hyphenate(key);
       {
         var keyInLowerCase = key.toLowerCase();
@@ -6975,7 +6973,12 @@ function extractPropsFromVNodeData (
           );
         }
       }
+      // 检查子组件需要的prop，父组件是否有通过props传
+      // 如果父组件没有传，则返回false，触发短路操作
+      // 检查子组件需要的prop，父组件是否有通过attrs传
       checkProp(res, props, key, altKey, true) ||
+      // attrs命中prop时，会从attrs对象中删除，这样就不会添加到DOM上了
+      // 这也是最后一个参数设置为false的作用
       checkProp(res, attrs, key, altKey, false);
     }
   }
@@ -7020,14 +7023,16 @@ function createElement (
   tag,
   data,
   children,
-  normalizationType,
+  normalizationType, // 区分以何种方式规范children
   alwaysNormalize
 ) {
+  // 如果data没有设置，则第三个参数就是children
   if (Array.isArray(data) || isPrimitive(data)) {
     normalizationType = children;
     children = data;
     data = undefined;
   }
+  // 手写的render函数alwaysNormalize一定为true
   if (isTrue(alwaysNormalize)) {
     normalizationType = ALWAYS_NORMALIZE;
   }
@@ -7041,7 +7046,7 @@ function _createElement (
   children, // 后代节点
   normalizationType
 ) {
-  // 判断data是否响应式的
+  // 判断data是否响应式的，是则直接返回一个空的VNode
   if (isDef(data) && isDef((data).__ob__)) {
      warn(
       "Avoid using observed data object as vnode data: " + (JSON.stringify(data)) + "\n" +
@@ -7074,7 +7079,7 @@ function _createElement (
     }
   }
   // support single function children as default scoped slot
-  // 作用域插槽
+  // 如果children的第一个元素是函数，那么这个函数会被当作作用域插槽，并且抛弃后面的子元素
   if (Array.isArray(children) &&
     typeof children[0] === 'function'
   ) {
@@ -7097,6 +7102,7 @@ function _createElement (
     // 原始标签
     if (config.isReservedTag(tag)) {
       // platform built-in elements
+      // .native修饰符不能用于原始标签
       if ( isDef(data) && isDef(data.nativeOn) && data.tag !== 'component') {
         warn(
           ("The .native modifier for v-on is only valid on components but it was used on <" + tag + ">."),
@@ -7109,8 +7115,10 @@ function _createElement (
       );
     }
     // component组件
+    // resolveAsset(A, B, C)，在A的B中查找是否存在C
     else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
       // component
+      // Ctor：组件
       vnode = createComponent(Ctor, data, context, children, tag);
     }
     // 自定义元素
@@ -7133,7 +7141,6 @@ function _createElement (
     return vnode
   } else if (isDef(vnode)) {
     if (isDef(ns)) { applyNS(vnode, ns); }
-    if (isDef(data)) { registerDeepBindings(data); }
     return vnode
   } else {
     return createEmptyVNode()
@@ -7155,18 +7162,6 @@ function applyNS (vnode, ns, force) {
         applyNS(child, ns, force);
       }
     }
-  }
-}
-
-// ref #5318
-// necessary to ensure parent re-render when deep bindings like :style and
-// :class are used on slot nodes
-function registerDeepBindings (data) {
-  if (isObject(data.style)) {
-    traverse(data.style);
-  }
-  if (isObject(data.class)) {
-    traverse(data.class);
   }
 }
 
@@ -7359,6 +7354,7 @@ function bindObjectProps (
 /**
  * Runtime helper for rendering static trees.
  */
+// 编译静态节点，生成并缓存静态节点Vnode
 function renderStatic (
   index,
   isInFor
@@ -7392,7 +7388,7 @@ function markOnce (
   markStatic(tree, ("__once__" + index + (key ? ("_" + key) : "")), true);
   return tree
 }
-
+// 标记静态节点
 function markStatic (
   tree,
   key,
@@ -7408,7 +7404,7 @@ function markStatic (
     markStaticNode(tree, key, isOnce);
   }
 }
-
+// 标记静态节点
 function markStaticNode (node, key, isOnce) {
   node.isStatic = true;
   node.key = key;
@@ -7719,13 +7715,13 @@ function updateComponentListeners (
 /*  */
 // 存储当前激活实例
 var activeInstance = null;
-
+// prepatch这个hook会调用这个函数
 function updateChildComponent (
-  vm,
-  propsData,
-  listeners,
-  parentVnode,
-  renderChildren
+  vm, // componentInstance
+  propsData, // 更新后的propsData
+  listeners, // 更新后的listeners
+  parentVnode, // 新的Vnode
+  renderChildren // 当前Vnode下的children
 ) {
 
   // determine whether component has slot children
@@ -7767,6 +7763,7 @@ function updateChildComponent (
   vm.$listeners = listeners || emptyObject;
 
   // update props
+  // 更新props
   if (propsData && vm.$options.props) {
     toggleObserving(false);
     var props = vm._props;
@@ -7782,6 +7779,7 @@ function updateChildComponent (
   }
 
   // update listeners
+  // 更新listeners
   listeners = listeners || emptyObject;
   var oldListeners = vm.$options._parentListeners;
   vm.$options._parentListeners = listeners;
@@ -7907,6 +7905,8 @@ function resolveInject (inject, vm) {
       var source = vm;
       // 通过key设置value
       while (source) {
+        // 这里没有直接从vm.$parent开始查找，是因为inject初始化在provide前面，
+        // 此时当前实例的_provided为undefined
         if (source._provided && hasOwn(source._provided, provideKey)) {
           result[key] = source._provided[provideKey];
           break
@@ -7932,7 +7932,10 @@ function resolveInject (inject, vm) {
 /*  */
 
 function resolveConstructorOptions (Ctor) {
+  // 这里的options是在 initGlobalAPI() 时注入的，格式如下
+  // { component, directive, filter }
   var options = Ctor.options;
+  // 判断当前构造函数是否是继承Vue
   if (Ctor.super) {
     var superOptions = resolveConstructorOptions(Ctor.super);
     var cachedSuperOptions = Ctor.superOptions;
@@ -8136,7 +8139,7 @@ var componentVNodeHooks = {
       child.$mount(hydrating ? vnode.elm : undefined, hydrating);
     }
   },
-
+  // patch比对的hook函数
   prepatch: function prepatch (oldVnode, vnode) {
     var options = vnode.componentOptions;
     var child = vnode.componentInstance = oldVnode.componentInstance;
@@ -8148,7 +8151,7 @@ var componentVNodeHooks = {
       options.children // new children
     );
   },
-
+  // 插入的hook函数
   insert: function insert (vnode) {
     var context = vnode.context;
     var componentInstance = vnode.componentInstance;
@@ -8169,13 +8172,17 @@ var componentVNodeHooks = {
       }
     }
   },
-
+  // 销毁的hook函数
   destroy: function destroy (vnode) {
     var componentInstance = vnode.componentInstance;
+    // 组件是否已经销毁
     if (!componentInstance._isDestroyed) {
+      // 是否在keepalive缓存的组件
       if (!vnode.data.keepAlive) {
+        // 调用组件实例原型上的$destroy方法
         componentInstance.$destroy();
-      } else {
+      }
+      else {
         deactivateChildComponent(componentInstance, true /* direct */);
       }
     }
@@ -8183,12 +8190,13 @@ var componentVNodeHooks = {
 };
 // 待合并的虚拟DOM的钩子函数
 var hooksToMerge = Object.keys(componentVNodeHooks);
+// 为组件生成对应的Vnode
 function createComponent (
-  Ctor,
-  data,
-  context,
-  children,
-  tag
+  Ctor,  // 组件选项
+  data, // data
+  context, // 父实例
+  children, // children
+  tag  // 在模版中使用的标签字符串
 ) {
   if (isUndef(Ctor)) {
     return
@@ -8245,7 +8253,8 @@ function createComponent (
   }
 
   // extract props
-  // props处理
+  // props处理, 处理父组件传给子组件的props绑定，生成propsData对象，
+  // 子组件实例化时，会用propsData去初始化props
   var propsData = extractPropsFromVNodeData(data, Ctor, tag);
 
   // functional component
@@ -8281,8 +8290,9 @@ function createComponent (
   var name = Ctor.options.name || tag;
   var vnode = new VNode(
     ("vue-component-" + (Ctor.cid) + (name ? ("-" + name) : '')),
-    data, undefined, undefined, undefined, context,
-    { Ctor: Ctor, propsData: propsData, listeners: listeners, tag: tag, children: children },
+    data, undefined, undefined, undefined,
+    context, // 上下文
+    { Ctor: Ctor, propsData: propsData, listeners: listeners, tag: tag, children: children },  // componentOptions
     asyncFactory
   );
 

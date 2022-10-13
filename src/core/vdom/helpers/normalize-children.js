@@ -61,11 +61,13 @@ function normalizeArrayChildren (children: any, nestedIndex?: string): Array<VNo
           res[lastIndex] = createTextVNode(last.text + (c[0]: any).text)
           c.shift()
         }
+        // 利用apply扁平化嵌套数组
         res.push.apply(res, c)
       }
     }
     // 原始值
     else if (isPrimitive(c)) {
+      // 合并文本节点
       if (isTextNode(last)) {
         // merge adjacent text nodes
         // this is necessary for SSR hydration because text nodes are
@@ -78,6 +80,7 @@ function normalizeArrayChildren (children: any, nestedIndex?: string): Array<VNo
       }
     }
     else {
+      // 合并文本节点
       if (isTextNode(c) && isTextNode(last)) {
         // merge adjacent text nodes
         res[lastIndex] = createTextVNode(last.text + c.text)

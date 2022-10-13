@@ -27,8 +27,9 @@ export function initMixin (Vue) {
     // a flag to avoid this being observed
     vm._isVue = true
     // merge options
+    // 这里的_isComponent是在createComponentInstanceForVnode方法注入的
     if (options && options._isComponent) {
-      // 虚拟DOM渲染时，遇到自定义组件没法通过createElement()创建节点，必须实例化该组件，此时走这里
+      // 虚拟DOM渲染时，遇到自定义组件没法通过createElement()创建节点，必须实例化该组件，此时选项的合并走这里
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
@@ -104,9 +105,12 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   const opts = vm.$options = Object.create(vm.constructor.options)
   // doing this because it's faster than dynamic enumeration.
   const parentVnode = options._parentVnode
+  // parent是指父组件
   opts.parent = options.parent
+  // 这里的_parentVnode是父级Vnode，值得注意的是，子组件在父组件中是一个Vnode，
+  // 但子组件实例化时render生成的也是一个Vnode，这个Vnode和代表子组件的Vnode是父子层级关系
   opts._parentVnode = parentVnode
-
+  // 所以这里通过_parentVnode存储组件在父组件的Vnode，从而获取data得数据
   const vnodeComponentOptions = parentVnode.componentOptions
   // 父组件绑定的值
   opts.propsData = vnodeComponentOptions.propsData

@@ -187,6 +187,7 @@ export function createPatchFunction (backend) {
       } else {
         // 递归渲染子节点元素，如果是组件，会渲染组件的dom
         createChildren(vnode, children, insertedVnodeQueue)
+        // 调用hook，为新创建的元素设置render函数中data指定的属性，比如class、style绑定，事件绑定等等
         if (isDef(data)) {
           invokeCreateHooks(vnode, insertedVnodeQueue)
         }
@@ -214,7 +215,7 @@ export function createPatchFunction (backend) {
     let i = vnode.data
     if (isDef(i)) {
       const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
-      // 执行虚拟DOM的init钩子函数
+      // 执行虚拟DOM的init钩子函数，这也是子组件实例化的主要实现
       if (isDef(i = i.hook) && isDef(i = i.init)) {
         i(vnode, false /* hydrating */)
       }
@@ -224,7 +225,7 @@ export function createPatchFunction (backend) {
       // in that case we can just return the element and be done.
       if (isDef(vnode.componentInstance)) {
         initComponent(vnode, insertedVnodeQueue)
-        // 添加到父元素
+        // 添加到父元素，这里可以解释子组件是怎么插入到父组件的
         insert(parentElm, vnode.elm, refElm)
         if (isTrue(isReactivated)) {
           reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
@@ -310,11 +311,12 @@ export function createPatchFunction (backend) {
     }
     return isDef(vnode.tag)
   }
-
+  // 调用create hook注册的函数
   function invokeCreateHooks (vnode, insertedVnodeQueue) {
     for (let i = 0; i < cbs.create.length; ++i) {
       cbs.create[i](emptyNode, vnode)
     }
+    // render函数中自定义的hook
     i = vnode.data.hook // Reuse variable
     if (isDef(i)) {
       if (isDef(i.create)) i.create(emptyNode, vnode)
@@ -454,14 +456,15 @@ export function createPatchFunction (backend) {
         oldEndVnode = oldCh[--oldEndIdx]
         newEndVnode = newCh[--newEndIdx]
       }
-      // 新后、旧前
+      // 旧前、新后
       else if (sameVnode(oldStartVnode, newEndVnode)) { // Vnode moved right
         patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue, newCh, newEndIdx)
+        // insertBefore会移动元素
         canMove && nodeOps.insertBefore(parentElm, oldStartVnode.elm, nodeOps.nextSibling(oldEndVnode.elm))
         oldStartVnode = oldCh[++oldStartIdx]
         newEndVnode = newCh[--newEndIdx]
       }
-      // 新前、旧后
+      // 旧后、新前
       else if (sameVnode(oldEndVnode, newStartVnode)) { // Vnode moved left
         patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue, newCh, newStartIdx)
         canMove && nodeOps.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm)
@@ -622,7 +625,7 @@ export function createPatchFunction (backend) {
       if (isDef(i = data.hook) && isDef(i = i.postpatch)) i(oldVnode, vnode)
     }
   }
-
+  // 调用insert钩子
   function invokeInsertHook (vnode, queue, initial) {
     // delay insert hooks for component root nodes, invoke them after the
     // element is really inserted
@@ -854,6 +857,7 @@ export function createPatchFunction (backend) {
     }
 
     invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch)
+    // 并不会所有的Vnode都有父元素，比如根组件挂载的时候，返回这个元素直接替换#app
     return vnode.elm
   }
 }

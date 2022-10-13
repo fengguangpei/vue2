@@ -1039,6 +1039,15 @@ var VNode = function VNode (
   this.fnOptions = undefined;
   this.fnScopeId = undefined;
   this.key = data && data.key;
+  /**
+   * {
+   * Ctor: Class<Component>;
+   * propsData: ?Object;
+   * listeners: ?Object;
+   * children: ?Array<VNode>;
+   * tag?: string;
+   * }
+   */
   this.componentOptions = componentOptions;
   this.componentInstance = undefined;
   this.parent = undefined;
@@ -1088,30 +1097,30 @@ methodsToPatch.forEach(function (method) {
   // cache original method
   var original = arrayProto[method]; // Array.prototype上的原型方法
   def(arrayMethods, method, function mutator () {
-    var args = [], len = arguments.length;
-    while ( len-- ) args[ len ] = arguments[ len ];
+  var args = [], len = arguments.length;
+  while ( len-- ) args[ len ] = arguments[ len ];
 
-    var result = original.apply(this, args);
-    // Observer实例
-    // 原型方法只能通过实例调用，所以这里的this指向数组
-    var ob = this.__ob__;
-    var inserted;
-    switch (method) {
-      case 'push':
-      case 'unshift':
-        inserted = args;
-        break
-      case 'splice':
-        inserted = args.slice(2);
-        break
-    }
-    // 通过数组的方法新增的元素, 一样需要被响应式监听
-    if (inserted) { ob.observeArray(inserted); }
-    // notify change
-    // 数组的依赖是从Observer实例上获取的
-    ob.dep.notify(); // 触发更新
-    // 返回结果
-    return result
+  var result = original.apply(this, args);
+  // Observer实例
+  // 原型方法只能通过实例调用，所以这里的this指向数组
+  var ob = this.__ob__;
+  var inserted;
+  switch (method) {
+    case 'push':
+    case 'unshift':
+      inserted = args;
+      break
+    case 'splice':
+      inserted = args.slice(2);
+      break
+  }
+  // 通过数组的方法新增的元素, 一样需要被响应式监听
+  if (inserted) { ob.observeArray(inserted); }
+  // notify change
+  // 数组的依赖是从Observer实例上获取的
+  ob.dep.notify(); // 触发更新
+  // 返回结果
+  return result
   });
 });
 
@@ -1234,8 +1243,8 @@ function defineReactive (
   obj,
   key,
   val,
-  customSetter,
-  shallow
+  customSetter, // 定义set时执行的拦截器
+  shallow // 是否要递归
 ) {
   // 对象属性的依赖实例
   var dep = new Dep();

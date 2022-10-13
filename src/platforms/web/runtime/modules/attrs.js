@@ -34,7 +34,7 @@ function updateAttrs (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   if (isDef(attrs.__ob__)) {
     attrs = vnode.data.attrs = extend({}, attrs)
   }
-
+  // 遍历attrs
   for (key in attrs) {
     cur = attrs[key]
     old = oldAttrs[key]

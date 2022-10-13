@@ -20,7 +20,7 @@ export function initExtend (Vue: GlobalAPI) {
     extendOptions = extendOptions || {}
     const Super = this // 指向父类，即Vue
     const SuperId = Super.cid // 唯一标识
-    // 缓存池，缓存创建出来的类
+    // 缓存池，缓存创建出来的类，这里extendOptions是我们传入的对象，这里会为其新增一个_Ctor属性，用来缓存创建的子类
     const cachedCtors = extendOptions._Ctor || (extendOptions._Ctor = {})
     // 缓存组件的构造函数，命中缓存直接返回，这个缓存是存在传入的对象上的
     if (cachedCtors[SuperId]) {
@@ -39,7 +39,7 @@ export function initExtend (Vue: GlobalAPI) {
     Sub.prototype = Object.create(Super.prototype)
     Sub.prototype.constructor = Sub
     Sub.cid = cid++
-    // 合并选项
+    // 合并选项，super.options是Vue内部的选项，继承时会扩展这个选项，将来会和用户传入的option合并
     Sub.options = mergeOptions(
       Super.options,
       extendOptions

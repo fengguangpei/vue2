@@ -8,26 +8,39 @@
   <script src="./dist/vue.js"></script>
 </head>
 <body>
-  <div id="app">
-    {{ name }}
-    {{ age }}
-    <button @click="change">CHANGE</button>
-  </div>
+  <div id="app"></div>
   <script>
     const VM = new Vue({
-      el: '#app',
+      el: "#app",
+      components: {
+        Test: {
+          render(h) {
+            return h('h1', 'hello world')
+          }
+        }
+      },
       data() {
         return {
-          name: 'VUE'
+          name: 'hello',
         }
       },
       methods: {
         change() {
           this.name = 'change';
         }
+      },
+      render(h) {
+        return h('Test',
+          {
+            hook: {
+              create(oldVnode, vnode) {
+                console.log(oldVnode, vnode);
+              }
+            }
+          }
+        )
       }
     })
-    VM.age = 30
   </script>
 </body>
 </html>

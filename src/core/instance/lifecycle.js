@@ -248,7 +248,7 @@ export function updateChildComponent (
   vm: Component, // componentInstance
   propsData: ?Object, // 更新后的propsData
   listeners: ?Object, // 更新后的listeners
-  parentVnode: MountedComponentVNode, // 新的Vnode
+  parentVnode: MountedComponentVNode, // 子组件在父组件中的Vnode，和组件内部render的Vnode不是一回事
   renderChildren: ?Array<VNode> // 当前Vnode下的children
 ) {
   if (process.env.NODE_ENV !== 'production') {
@@ -261,12 +261,19 @@ export function updateChildComponent (
   // check if there are dynamic scopedSlots (hand-written or compiled but with
   // dynamic slot names). Static scoped slots compiled from template has the
   // "$stable" marker.
+  // 新的插槽
   const newScopedSlots = parentVnode.data.scopedSlots
+  // 旧的插槽
   const oldScopedSlots = vm.$scopedSlots
+  // 是否是动态插槽
   const hasDynamicScopedSlot = !!(
+    // 新插槽不稳定，$stable标记是模版编译时标记的
     (newScopedSlots && !newScopedSlots.$stable) ||
+    // 旧插槽不稳定
     (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
+    // 新旧插槽绑定的key不同
     (newScopedSlots && vm.$scopedSlots.$key !== newScopedSlots.$key) ||
+    // 没有新插槽，旧插槽有Key
     (!newScopedSlots && vm.$scopedSlots.$key)
   )
 
@@ -317,6 +324,7 @@ export function updateChildComponent (
   updateComponentListeners(vm, listeners, oldListeners)
 
   // resolve slots + force update if has children
+  // 是否需要强制更新子组件
   if (needsForceUpdate) {
     vm.$slots = resolveSlots(renderChildren, parentVnode.context)
     vm.$forceUpdate()

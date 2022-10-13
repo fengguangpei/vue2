@@ -75,7 +75,10 @@ Vue.prototype.$mount = function (
         delimiters: options.delimiters,
         comments: options.comments
       }, this)
+      // render函数
       options.render = render
+      // 静态节点渲染函数，是一个数组，存储了组件模版中的静态节点，提高性能
+      // https://zhuanlan.zhihu.com/p/80694762
       options.staticRenderFns = staticRenderFns
 
       /* istanbul ignore if */

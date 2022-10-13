@@ -111,6 +111,7 @@ export function _createElement (
     // 原始标签
     if (config.isReservedTag(tag)) {
       // platform built-in elements
+      // .native修饰符不能用于原始标签
       if (process.env.NODE_ENV !== 'production' && isDef(data) && isDef(data.nativeOn) && data.tag !== 'component') {
         warn(
           `The .native modifier for v-on is only valid on components but it was used on <${tag}>.`,
@@ -123,6 +124,7 @@ export function _createElement (
       )
     }
     // component组件
+    // resolveAsset(A, B, C)，在A的B中查找是否存在C
     else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
       // component
       // Ctor：组件
@@ -148,6 +150,7 @@ export function _createElement (
     return vnode
   } else if (isDef(vnode)) {
     if (isDef(ns)) applyNS(vnode, ns)
+    // 这个方法的作用可以搜索 ref #5318 这个issue
     if (isDef(data)) registerDeepBindings(data)
     return vnode
   } else {
@@ -176,6 +179,43 @@ function applyNS (vnode, ns, force) {
 // ref #5318
 // necessary to ensure parent re-render when deep bindings like :style and
 // :class are used on slot nodes
+/**
+ * <template>
+ *  <test>
+ *    <h1 :style="obj">Hello world</h1>
+ *  </test>
+ *  <button @click="change">change</button>
+ * </template>
+ * <script>
+ *  export default {
+ *    components: {
+ *      Test: {
+ *        render(h) {
+ *          return h('h1', {}, this.$slots.default)
+ *        }
+ *      }
+ *    },
+ *    data() {
+ *      return {
+ *        obj: { color: 'red' }
+ *      }
+ *    },
+ *    methods: {
+ *      change() {
+ *        this.obj.color = 'green'
+ *      }
+ *    }
+ *  }
+ * </script>
+ * 在这个例子中，传给test组件的默认插槽default对应的Vnode是在当前组件作用域执行的
+ * 所以，会触发obj属性的依赖收集，由于没有读取obj.color属性，所以并不会触发color属性的依赖收集
+ * 
+ * 子组件在渲染时，会访问default插槽，这个过程中会在创建元素后，根据style绑定设置样式，触发color属性的依赖收集
+ * 
+ * 在父组件点击change按钮，修改color属性，触发子组件的更新，但是并不会触发父组件的更新，所以默认插槽并不会更新【默认插槽在父组件作用域生成】
+ * 
+ * 为了解决这个问题，在父组件生成default插槽时，深度遍历style绑定值，触发依赖收集
+ */
 function registerDeepBindings (data) {
   if (isObject(data.style)) {
     traverse(data.style)
