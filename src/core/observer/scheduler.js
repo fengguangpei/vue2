@@ -13,17 +13,22 @@ import {
 } from '../util/index'
 
 export const MAX_UPDATE_COUNT = 100
-
+// 队列
 const queue: Array<Watcher> = []
 const activatedChildren: Array<Component> = []
+// 哈希，记录一个watcher是否已经添加
 let has: { [key: number]: ?true } = {}
 let circular: { [key: number]: number } = {}
+// 已把队列添加到事件循环中，等待执行
 let waiting = false
+// 是否正在刷新队列
 let flushing = false
+// 遍历执行到那个watcher了
 let index = 0
 
 /**
  * Reset the scheduler's state.
+ * 重新设置任务队列的相关状态
  */
 function resetSchedulerState () {
   index = queue.length = activatedChildren.length = 0
@@ -67,6 +72,7 @@ if (inBrowser && !isIE) {
 
 /**
  * Flush both queues and run the watchers.
+ * 刷新队列
  */
 function flushSchedulerQueue () {
   currentFlushTimestamp = getNow()
@@ -85,6 +91,7 @@ function flushSchedulerQueue () {
 
   // do not cache length because more watchers might be pushed
   // as we run existing watchers
+  // 没有缓存queue.length，因为遍历queue期间可能有新的watcher加入
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index]
     if (watcher.before) {
@@ -126,7 +133,7 @@ function flushSchedulerQueue () {
     devtools.emit('flush')
   }
 }
-
+// 调用updated钩子函数
 function callUpdatedHooks (queue) {
   let i = queue.length
   while (i--) {
@@ -148,7 +155,7 @@ export function queueActivatedComponent (vm: Component) {
   vm._inactive = false
   activatedChildren.push(vm)
 }
-
+// 调用activated钩子函数
 function callActivatedHooks (queue) {
   for (let i = 0; i < queue.length; i++) {
     queue[i]._inactive = true
@@ -170,6 +177,7 @@ export function queueWatcher (watcher: Watcher) {
     if (!flushing) {
       queue.push(watcher)
     } else {
+      // 队列已经在刷新了，根据ID排序，插入到队列中
       // if already flushing, splice the watcher based on its id
       // if already past its id, it will be run next immediately.
       let i = queue.length - 1
