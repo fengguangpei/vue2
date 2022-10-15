@@ -47,6 +47,8 @@ function pruneCacheEntry (
   current?: VNode
 ) {
   const entry: ?CacheEntry = cache[key]
+  // 判断当前组件是否是要删除的组件，不是的情况下，才能调用组件实例的$destroy方法，
+  // 毕竟当前组件还在视图中，
   if (entry && (!current || entry.tag !== current.tag)) {
     entry.componentInstance.$destroy()
   }
@@ -116,6 +118,9 @@ export default {
 
   render () {
     const slot = this.$slots.default
+    // 获取第一个组件Vnode，如果没有组件Vnode，则从slot数组中区第一个
+    // 比如<keep-alive><input type="text" /><input type="text"/></keep-alive>
+    // 由于没有组件，所以vnode为undefined，直接返回slot && slot[0]
     const vnode: VNode = getFirstComponentChild(slot)
     const componentOptions: ?VNodeComponentOptions = vnode && vnode.componentOptions
     if (componentOptions) {

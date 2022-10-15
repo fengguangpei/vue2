@@ -8,37 +8,38 @@
   <script src="./dist/vue.js"></script>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <keep-alive>
+      <component :is="name"></component>
+    </keep-alive>
+    <button @click="change">change</button>
+  </div>
   <script>
     const VM = new Vue({
       el: "#app",
       components: {
-        Test: {
-          render(h) {
-            return h('h1', 'hello world')
+        A: {
+          template: '<h1>A</h1>',
+        },
+        B: {
+          template: '<h1>B</h1>',
+          mounted() {
+            console.log(this.$parent)
           }
         }
       },
       data() {
         return {
-          name: 'hello',
+          name: 'A'
         }
       },
       methods: {
         change() {
-          this.name = 'change';
+          this.name = this.name === 'A' ? 'B' : 'A';
         }
       },
-      render(h) {
-        return h('Test',
-          {
-            hook: {
-              create(oldVnode, vnode) {
-                console.log(oldVnode, vnode);
-              }
-            }
-          }
-        )
+      updated() {
+        console.log('updated')
       }
     })
   </script>

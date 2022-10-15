@@ -32,6 +32,7 @@ export const emptyNode = new VNode('', {}, [])
 
 const hooks = ['create', 'activate', 'update', 'remove', 'destroy']
 // 判断两个节点是否是相同节点
+// 不同组件的Vnode的tag是不一样的
 function sameVnode (a, b) {
   return (
     a.key === b.key &&
@@ -226,7 +227,9 @@ export function createPatchFunction (backend) {
       if (isDef(vnode.componentInstance)) {
         initComponent(vnode, insertedVnodeQueue)
         // 添加到父元素，这里可以解释子组件是怎么插入到父组件的
+        // keep-alive中vnode.elm是上一次保存的
         insert(parentElm, vnode.elm, refElm)
+        // keep-alive逻辑处理
         if (isTrue(isReactivated)) {
           reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
         }
@@ -240,6 +243,7 @@ export function createPatchFunction (backend) {
       insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert)
       vnode.data.pendingInsert = null
     }
+    // 缓存组件的DOM
     vnode.elm = vnode.componentInstance.$el
     if (isPatchable(vnode)) {
       invokeCreateHooks(vnode, insertedVnodeQueue)
@@ -582,7 +586,19 @@ export function createPatchFunction (backend) {
     if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
       i(oldVnode, vnode)
     }
-
+    /**
+     * <template>
+     *  <div>
+     *    <Test>
+     *      <h1>hello world</h1>
+     *    </Test>
+     *  </div>
+     * </template>
+     * 这里有个误区，模版编译成Vnode后，Test对应的Vnode并不会有children，
+     * 但上面模版明明有h1, 怎么children就变成了undefined呢
+     * 其实这个children是被存在componentOptions中了，给子组件实例化的时候使用，
+     * 毕竟现在这个Vnode现在只是一个占位
+     */
     const oldCh = oldVnode.children
     const ch = vnode.children
     // 执行所有module的update钩子函数，以及用户自定义的update钩子函数
@@ -805,8 +821,9 @@ export function createPatchFunction (backend) {
         // replacing existing element
         const oldElm = oldVnode.elm
         const parentElm = nodeOps.parentNode(oldElm)
-
+      
         // create new node
+        // keep-alive切换时走这里
         createElm(
           vnode,
           insertedVnodeQueue,
@@ -816,7 +833,7 @@ export function createPatchFunction (backend) {
           oldElm._leaveCb ? null : parentElm,
           nodeOps.nextSibling(oldElm)
         )
-
+        
         // update parent placeholder node element, recursively
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent

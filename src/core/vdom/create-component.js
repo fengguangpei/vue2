@@ -31,7 +31,18 @@ import {
 // vue虚拟DOM依赖的开源库的hook函数
 const componentVNodeHooks = {
   init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
-    // keep-alive逻辑
+    /**
+     * <template>
+     *   <div>
+     *     <keep-alive>
+     *       <component :is="name"></component>
+     *     </keep-alive>
+     *   </div>
+     * </template>
+     * 切换组件时，会重新执行init钩子，
+     */
+    // keep-alive逻辑，直接走if逻辑，不会走else中的child.$mount()逻辑，
+    // 因为keep-alive会直接将保存的Vnode的elm插入到父元素中
     if (
       vnode.componentInstance &&
       !vnode.componentInstance._isDestroyed &&
@@ -39,6 +50,7 @@ const componentVNodeHooks = {
     ) {
       // kept-alive components, treat as a patch
       const mountedNode: any = vnode // work around flow
+      // 注意点，keepalive组件的prepatch传递两个相同的Vnode
       componentVNodeHooks.prepatch(mountedNode, mountedNode)
     }
     // 递归处理子组件的逻辑
@@ -247,7 +259,7 @@ function installComponentHooks (data: VNodeData) {
       hooks[key] = existing ? mergeHook(toMerge, existing) : toMerge
     }
   }
-}
+} 
 // 合并hook
 function mergeHook (f1: any, f2: any): Function {
   const merged = (a, b) => {

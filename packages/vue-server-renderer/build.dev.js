@@ -6841,6 +6841,40 @@ function renderSSRStyle (
 
 var seenObjects = new _Set();
 
+/**
+ * Recursively traverse an object to evoke all converted
+ * getters, so that every nested property inside the object
+ * is collected as a "deep" dependency.
+ */
+// 递归遍历对象，实现深度监听
+function traverse (val) {
+  _traverse(val, seenObjects);
+  seenObjects.clear();
+}
+
+function _traverse (val, seen) {
+  var i, keys;
+  var isA = Array.isArray(val);
+  if ((!isA && !isObject(val)) || Object.isFrozen(val) || val instanceof VNode) {
+    return
+  }
+  if (val.__ob__) {
+    var depId = val.__ob__.dep.id;
+    if (seen.has(depId)) {
+      return
+    }
+    seen.add(depId);
+  }
+  if (isA) {
+    i = val.length;
+    while (i--) { _traverse(val[i], seen); }
+  } else {
+    keys = Object.keys(val);
+    i = keys.length;
+    while (i--) { _traverse(val[keys[i]], seen); }
+  }
+}
+
 {
   var perf = inBrowser && window.performance;
   /* istanbul ignore if */
@@ -7141,6 +7175,8 @@ function _createElement (
     return vnode
   } else if (isDef(vnode)) {
     if (isDef(ns)) { applyNS(vnode, ns); }
+    // 这个方法的作用可以搜索 ref #5318 这个issue
+    if (isDef(data)) { registerDeepBindings(data); }
     return vnode
   } else {
     return createEmptyVNode()
@@ -7162,6 +7198,55 @@ function applyNS (vnode, ns, force) {
         applyNS(child, ns, force);
       }
     }
+  }
+}
+
+// ref #5318
+// necessary to ensure parent re-render when deep bindings like :style and
+// :class are used on slot nodes
+/**
+ * <template>
+ *  <test>
+ *    <h1 :style="obj">Hello world</h1>
+ *  </test>
+ *  <button @click="change">change</button>
+ * </template>
+ * <script>
+ *  export default {
+ *    components: {
+ *      Test: {
+ *        render(h) {
+ *          return h('h1', {}, this.$slots.default)
+ *        }
+ *      }
+ *    },
+ *    data() {
+ *      return {
+ *        obj: { color: 'red' }
+ *      }
+ *    },
+ *    methods: {
+ *      change() {
+ *        this.obj.color = 'green'
+ *      }
+ *    }
+ *  }
+ * </script>
+ * 在这个例子中，传给test组件的默认插槽default对应的Vnode是在当前组件作用域执行的
+ * 所以，会触发obj属性的依赖收集，由于没有读取obj.color属性，所以并不会触发color属性的依赖收集
+ * 
+ * 子组件在渲染时，会访问default插槽，这个过程中会在创建元素后，根据style绑定设置样式，触发color属性的依赖收集
+ * 
+ * 在父组件点击change按钮，修改color属性，触发子组件的更新，但是并不会触发父组件的更新，所以默认插槽并不会更新【默认插槽在父组件作用域生成】
+ * 
+ * 为了解决这个问题，在父组件生成default插槽时，深度遍历style绑定值，触发依赖收集
+ */
+function registerDeepBindings (data) {
+  if (isObject(data.style)) {
+    traverse(data.style);
+  }
+  if (isObject(data.class)) {
+    traverse(data.class);
   }
 }
 
@@ -7720,7 +7805,7 @@ function updateChildComponent (
   vm, // componentInstance
   propsData, // 更新后的propsData
   listeners, // 更新后的listeners
-  parentVnode, // 新的Vnode
+  parentVnode, // 子组件在父组件中的Vnode，和组件内部render的Vnode不是一回事
   renderChildren // 当前Vnode下的children
 ) {
 
@@ -7730,12 +7815,19 @@ function updateChildComponent (
   // check if there are dynamic scopedSlots (hand-written or compiled but with
   // dynamic slot names). Static scoped slots compiled from template has the
   // "$stable" marker.
+  // 新的插槽
   var newScopedSlots = parentVnode.data.scopedSlots;
+  // 旧的插槽
   var oldScopedSlots = vm.$scopedSlots;
+  // 是否是动态插槽
   var hasDynamicScopedSlot = !!(
+    // 新插槽不稳定，$stable标记是模版编译时标记的
     (newScopedSlots && !newScopedSlots.$stable) ||
+    // 旧插槽不稳定
     (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
+    // 新旧插槽绑定的key不同
     (newScopedSlots && vm.$scopedSlots.$key !== newScopedSlots.$key) ||
+    // 没有新插槽，旧插槽有Key
     (!newScopedSlots && vm.$scopedSlots.$key)
   );
 
@@ -7786,6 +7878,7 @@ function updateChildComponent (
   updateComponentListeners(vm, listeners, oldListeners);
 
   // resolve slots + force update if has children
+  // 是否需要强制更新子组件
   if (needsForceUpdate) {
     vm.$slots = resolveSlots(renderChildren, parentVnode.context);
     vm.$forceUpdate();
@@ -8307,7 +8400,11 @@ function createComponentInstanceForVnode (
 ) {
   var options = {
     _isComponent: true,
+    // 这里的_parentVnode是父级Vnode，值得注意的是，子组件在父组件中是一个Vnode，
+    // 但子组件实例化时render生成的也是一个Vnode，这个Vnode和代表子组件的Vnode是父子层级关系
+    // 所以这里通过_parentVnode传给子组件内部
     _parentVnode: vnode,
+    // 这里的parent是父组件
     parent: parent
   };
   // check inline-template render functions
@@ -8316,6 +8413,7 @@ function createComponentInstanceForVnode (
     options.render = inlineTemplate.render;
     options.staticRenderFns = inlineTemplate.staticRenderFns;
   }
+  // init逻辑
   return new vnode.componentOptions.Ctor(options)
 }
 // 为VNode的hook安装虚拟DOM的钩子函数

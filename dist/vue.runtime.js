@@ -3485,7 +3485,11 @@
   ) {
     var options = {
       _isComponent: true,
+      // 这里的_parentVnode是父级Vnode，值得注意的是，子组件在父组件中是一个Vnode，
+      // 但子组件实例化时render生成的也是一个Vnode，这个Vnode和代表子组件的Vnode是父子层级关系
+      // 所以这里通过_parentVnode传给子组件内部
       _parentVnode: vnode,
+      // 这里的parent是父组件
       parent: parent
     };
     // check inline-template render functions
@@ -3494,6 +3498,7 @@
       options.render = inlineTemplate.render;
       options.staticRenderFns = inlineTemplate.staticRenderFns;
     }
+    // init逻辑
     return new vnode.componentOptions.Ctor(options)
   }
   // 为VNode的hook安装虚拟DOM的钩子函数
@@ -3675,6 +3680,8 @@
       return vnode
     } else if (isDef(vnode)) {
       if (isDef(ns)) { applyNS(vnode, ns); }
+      // 这个方法的作用可以搜索 ref #5318 这个issue
+      if (isDef(data)) { registerDeepBindings(data); }
       return vnode
     } else {
       return createEmptyVNode()
@@ -3696,6 +3703,55 @@
           applyNS(child, ns, force);
         }
       }
+    }
+  }
+
+  // ref #5318
+  // necessary to ensure parent re-render when deep bindings like :style and
+  // :class are used on slot nodes
+  /**
+   * <template>
+   *  <test>
+   *    <h1 :style="obj">Hello world</h1>
+   *  </test>
+   *  <button @click="change">change</button>
+   * </template>
+   * <script>
+   *  export default {
+   *    components: {
+   *      Test: {
+   *        render(h) {
+   *          return h('h1', {}, this.$slots.default)
+   *        }
+   *      }
+   *    },
+   *    data() {
+   *      return {
+   *        obj: { color: 'red' }
+   *      }
+   *    },
+   *    methods: {
+   *      change() {
+   *        this.obj.color = 'green'
+   *      }
+   *    }
+   *  }
+   * </script>
+   * 在这个例子中，传给test组件的默认插槽default对应的Vnode是在当前组件作用域执行的
+   * 所以，会触发obj属性的依赖收集，由于没有读取obj.color属性，所以并不会触发color属性的依赖收集
+   * 
+   * 子组件在渲染时，会访问default插槽，这个过程中会在创建元素后，根据style绑定设置样式，触发color属性的依赖收集
+   * 
+   * 在父组件点击change按钮，修改color属性，触发子组件的更新，但是并不会触发父组件的更新，所以默认插槽并不会更新【默认插槽在父组件作用域生成】
+   * 
+   * 为了解决这个问题，在父组件生成default插槽时，深度遍历style绑定值，触发依赖收集
+   */
+  function registerDeepBindings (data) {
+    if (isObject(data.style)) {
+      traverse(data.style);
+    }
+    if (isObject(data.class)) {
+      traverse(data.class);
     }
   }
 
@@ -3750,11 +3806,30 @@
     // 静态render方法，把当前实例渲染成VNode
     Vue.prototype._render = function () {
       var vm = this;
-      // _parentVnode: 父组件虚拟DOM
+      // 子组件在父组件中的Vnode，和组件内部render的Vnode不是一回事
+      // 这里的_parentVnode就是子组件在父组件中的Vnode，后面通过_parentVnode即可拿到传给子组件的绑定值
+      // 比如：
+      /**
+       * export default {
+       *  render(h) {
+       *    return h(
+       *      'div',
+       *      [
+       *        h('TestComponent', {
+       *            scopedSlots: {
+       *              default: () => 'Hello world'
+       *            }
+       *        })
+       *      ]
+       *    )
+       *  }
+       * }
+       */
+      // _parentVnode就是h('TestComponent')这个Vnode
       var ref = vm.$options;
       var render = ref.render;
       var _parentVnode = ref._parentVnode;
-      // 获取父组件传人子组件的作用域插槽
+      // 获取父组件传入子组件的作用域插槽
       if (_parentVnode) {
         vm.$scopedSlots = normalizeScopedSlots(
           _parentVnode.data.scopedSlots,
@@ -3813,6 +3888,9 @@
         vnode = createEmptyVNode();
       }
       // set parent
+      // 这是一个很细节的点，子组件在父组件中是一个Vnode，子组件内部的render函数是一个Vnode，
+      // 不要误以为两者是一回事
+      // 两者是父子层级关系
       vnode.parent = _parentVnode;
       return vnode
     };
@@ -4364,7 +4442,7 @@
     vm, // componentInstance
     propsData, // 更新后的propsData
     listeners, // 更新后的listeners
-    parentVnode, // 新的Vnode
+    parentVnode, // 子组件在父组件中的Vnode，和组件内部render的Vnode不是一回事
     renderChildren // 当前Vnode下的children
   ) {
     {
@@ -4377,12 +4455,19 @@
     // check if there are dynamic scopedSlots (hand-written or compiled but with
     // dynamic slot names). Static scoped slots compiled from template has the
     // "$stable" marker.
+    // 新的插槽
     var newScopedSlots = parentVnode.data.scopedSlots;
+    // 旧的插槽
     var oldScopedSlots = vm.$scopedSlots;
+    // 是否是动态插槽
     var hasDynamicScopedSlot = !!(
+      // 新插槽不稳定，$stable标记是模版编译时标记的
       (newScopedSlots && !newScopedSlots.$stable) ||
+      // 旧插槽不稳定
       (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
+      // 新旧插槽绑定的key不同
       (newScopedSlots && vm.$scopedSlots.$key !== newScopedSlots.$key) ||
+      // 没有新插槽，旧插槽有Key
       (!newScopedSlots && vm.$scopedSlots.$key)
     );
 
@@ -4433,6 +4518,7 @@
     updateComponentListeners(vm, listeners, oldListeners);
 
     // resolve slots + force update if has children
+    // 是否需要强制更新子组件
     if (needsForceUpdate) {
       vm.$slots = resolveSlots(renderChildren, parentVnode.context);
       vm.$forceUpdate();
@@ -5334,8 +5420,9 @@
       // a flag to avoid this being observed
       vm._isVue = true;
       // merge options
+      // 这里的_isComponent是在createComponentInstanceForVnode方法注入的
       if (options && options._isComponent) {
-        // 虚拟DOM渲染时，遇到自定义组件没法通过createElement()创建节点，必须实例化该组件，此时走这里
+        // 虚拟DOM渲染时，遇到自定义组件没法通过createElement()创建节点，必须实例化该组件，此时选项的合并走这里
         // optimize internal component instantiation
         // since dynamic options merging is pretty slow, and none of the
         // internal component options needs special treatment.
@@ -5409,9 +5496,12 @@
     var opts = vm.$options = Object.create(vm.constructor.options);
     // doing this because it's faster than dynamic enumeration.
     var parentVnode = options._parentVnode;
+    // parent是指父组件
     opts.parent = options.parent;
+    // 这里的_parentVnode是父级Vnode，值得注意的是，子组件在父组件中是一个Vnode，
+    // 但子组件实例化时render生成的也是一个Vnode，这个Vnode和代表子组件的Vnode是父子层级关系
     opts._parentVnode = parentVnode;
-
+    // 所以这里通过_parentVnode存储组件在父组件的Vnode，从而获取data得数据
     var vnodeComponentOptions = parentVnode.componentOptions;
     // 父组件绑定的值
     opts.propsData = vnodeComponentOptions.propsData;
@@ -5825,6 +5915,8 @@
     current
   ) {
     var entry = cache[key];
+    // 判断当前组件是否是要删除的组件，不是的情况下，才能调用组件实例的$destroy方法，
+    // 毕竟当前组件还在视图中，
     if (entry && (!current || entry.tag !== current.tag)) {
       entry.componentInstance.$destroy();
     }
@@ -5902,6 +5994,9 @@
 
     render: function render () {
       var slot = this.$slots.default;
+      // 获取第一个组件Vnode，如果没有组件Vnode，则从slot数组中区第一个
+      // 比如<keep-alive><input type="text" /><input type="text"/></keep-alive>
+      // 由于没有组件，所以vnode为undefined，直接返回slot && slot[0]
       var vnode = getFirstComponentChild(slot);
       var componentOptions = vnode && vnode.componentOptions;
       if (componentOptions) {
@@ -6553,6 +6648,7 @@
         {
           // 递归渲染子节点元素，如果是组件，会渲染组件的dom
           createChildren(vnode, children, insertedVnodeQueue);
+          // 调用hook，为新创建的元素设置render函数中data指定的属性，比如class、style绑定，事件绑定等等
           if (isDef(data)) {
             invokeCreateHooks(vnode, insertedVnodeQueue);
           }
@@ -6580,7 +6676,7 @@
       var i = vnode.data;
       if (isDef(i)) {
         var isReactivated = isDef(vnode.componentInstance) && i.keepAlive;
-        // 执行虚拟DOM的init钩子函数
+        // 执行虚拟DOM的init钩子函数，这也是子组件实例化的主要实现
         if (isDef(i = i.hook) && isDef(i = i.init)) {
           i(vnode, false /* hydrating */);
         }
@@ -6590,7 +6686,7 @@
         // in that case we can just return the element and be done.
         if (isDef(vnode.componentInstance)) {
           initComponent(vnode, insertedVnodeQueue);
-          // 添加到父元素
+          // 添加到父元素，这里可以解释子组件是怎么插入到父组件的
           insert(parentElm, vnode.elm, refElm);
           if (isTrue(isReactivated)) {
             reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm);
@@ -6605,6 +6701,7 @@
         insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert);
         vnode.data.pendingInsert = null;
       }
+      // 缓存组件的DOM
       vnode.elm = vnode.componentInstance.$el;
       if (isPatchable(vnode)) {
         invokeCreateHooks(vnode, insertedVnodeQueue);
@@ -6676,11 +6773,12 @@
       }
       return isDef(vnode.tag)
     }
-
+    // 调用create hook注册的函数
     function invokeCreateHooks (vnode, insertedVnodeQueue) {
       for (var i$1 = 0; i$1 < cbs.create.length; ++i$1) {
         cbs.create[i$1](emptyNode, vnode);
       }
+      // render函数中自定义的hook
       i = vnode.data.hook; // Reuse variable
       if (isDef(i)) {
         if (isDef(i.create)) { i.create(emptyNode, vnode); }
@@ -6820,14 +6918,15 @@
           oldEndVnode = oldCh[--oldEndIdx];
           newEndVnode = newCh[--newEndIdx];
         }
-        // 新后、旧前
+        // 旧前、新后
         else if (sameVnode(oldStartVnode, newEndVnode)) { // Vnode moved right
           patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue, newCh, newEndIdx);
+          // insertBefore会移动元素
           canMove && nodeOps.insertBefore(parentElm, oldStartVnode.elm, nodeOps.nextSibling(oldEndVnode.elm));
           oldStartVnode = oldCh[++oldStartIdx];
           newEndVnode = newCh[--newEndIdx];
         }
-        // 新前、旧后
+        // 旧后、新前
         else if (sameVnode(oldEndVnode, newStartVnode)) { // Vnode moved left
           patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue, newCh, newStartIdx);
           canMove && nodeOps.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm);
@@ -6945,7 +7044,19 @@
       if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
         i(oldVnode, vnode);
       }
-
+      /**
+       * <template>
+       *  <div>
+       *    <Test>
+       *      <h1>hello world</h1>
+       *    </Test>
+       *  </div>
+       * </template>
+       * 这里有个误区，模版编译成Vnode后，Test对应的Vnode并不会有children，
+       * 但上面模版明明有h1, 怎么children就变成了undefined呢
+       * 其实这个children是被存在componentOptions中了，给子组件实例化的时候使用，
+       * 毕竟现在这个Vnode现在只是一个占位
+       */
       var oldCh = oldVnode.children;
       var ch = vnode.children;
       // 执行所有module的update钩子函数，以及用户自定义的update钩子函数
@@ -6988,7 +7099,7 @@
         if (isDef(i = data.hook) && isDef(i = i.postpatch)) { i(oldVnode, vnode); }
       }
     }
-
+    // 调用insert钩子
     function invokeInsertHook (vnode, queue, initial) {
       // delay insert hooks for component root nodes, invoke them after the
       // element is really inserted
@@ -7170,7 +7281,7 @@
           // replacing existing element
           var oldElm = oldVnode.elm;
           var parentElm = nodeOps.parentNode(oldElm);
-
+          debugger
           // create new node
           createElm(
             vnode,
@@ -7181,7 +7292,7 @@
             oldElm._leaveCb ? null : parentElm,
             nodeOps.nextSibling(oldElm)
           );
-
+          
           // update parent placeholder node element, recursively
           if (isDef(vnode.parent)) {
             var ancestor = vnode.parent;
@@ -7222,6 +7333,7 @@
       }
 
       invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch);
+      // 并不会所有的Vnode都有父元素，比如根组件挂载的时候，返回这个元素直接替换#app
       return vnode.elm
     }
   }
@@ -7366,7 +7478,7 @@
     if (isDef(attrs.__ob__)) {
       attrs = vnode.data.attrs = extend({}, attrs);
     }
-
+    // 遍历attrs
     for (key in attrs) {
       cur = attrs[key];
       old = oldAttrs[key];
