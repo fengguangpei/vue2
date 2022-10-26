@@ -786,11 +786,15 @@ export function createPatchFunction (backend) {
       createElm(vnode, insertedVnodeQueue)
     }
     else {
+      // 是否是原生元素
       const isRealElement = isDef(oldVnode.nodeType)
+      // 不是原生元素，oldVnode和vnode为同一节点
       if (!isRealElement && sameVnode(oldVnode, vnode)) {
         // patch existing root node
         patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly)
-      } else {
+      }
+      else {
+        // 是真实元素，则表示是初次渲染
         if (isRealElement) {
           // mounting to a real element
           // check if this is server-rendered content and if we can perform
