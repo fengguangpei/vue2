@@ -214,6 +214,7 @@ var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\
 
 /**
  * Define a property.
+ * defineProperty包装函数
  */
 function def (obj, key, val, enumerable) {
   Object.defineProperty(obj, key, {
@@ -1425,6 +1426,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 /**
  * Helper that recursively merges two data objects together.
+ * 递归合并两个对象
  */
 function mergeData (to, from) {
   if (!from) { return to }

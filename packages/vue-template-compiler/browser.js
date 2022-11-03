@@ -257,6 +257,7 @@
 
   /**
    * Define a property.
+   * defineProperty包装函数
    */
   function def (obj, key, val, enumerable) {
     Object.defineProperty(obj, key, {
@@ -1468,6 +1469,7 @@
 
   /**
    * Helper that recursively merges two data objects together.
+   * 递归合并两个对象
    */
   function mergeData (to, from) {
     if (!from) { return to }

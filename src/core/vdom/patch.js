@@ -366,7 +366,9 @@ export function createPatchFunction (backend) {
     const data = vnode.data
     // 调用相关的hook钩子函数
     if (isDef(data)) {
+      // 自定义destroy hook钩子函数
       if (isDef(i = data.hook) && isDef(i = i.destroy)) i(vnode)
+      // 处理class、style绑定等属性的destroy钩子函数
       for (i = 0; i < cbs.destroy.length; ++i) cbs.destroy[i](vnode)
     }
     // 递归卸载子组件
@@ -391,7 +393,7 @@ export function createPatchFunction (backend) {
       }
     }
   }
-
+  // 触发remove钩子函数
   function removeAndInvokeRemoveHook (vnode, rm) {
     if (isDef(rm) || isDef(vnode.data)) {
       let i

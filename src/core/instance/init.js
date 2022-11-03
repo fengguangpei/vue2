@@ -116,6 +116,13 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   opts.propsData = vnodeComponentOptions.propsData
   // 父组件设置的事件监听函数
   opts._parentListeners = vnodeComponentOptions.listeners
+  /**
+   * <hello-world>
+   *  <h1 #header></h1>
+   *  <h1 #footer></h1>
+   * </hello-world>
+   * 其中的两个h1对应的Vnode就是children
+   */
   opts._renderChildren = vnodeComponentOptions.children
   opts._componentTag = vnodeComponentOptions.tag
 

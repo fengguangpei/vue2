@@ -16,9 +16,9 @@ import {
 } from 'web/util/index'
 
 import { patch } from './patch'
-// Vue内置指令
+// Vue内置指令，v-show、v-model
 import platformDirectives from './directives/index'
-// Vue内置组件
+// Vue内置组件，transition、transition-group
 import platformComponents from './components/index'
 
 // install platform specific utils

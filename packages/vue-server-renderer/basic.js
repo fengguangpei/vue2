@@ -639,6 +639,7 @@
 
   /**
    * Define a property.
+   * defineProperty包装函数
    */
   function def (obj, key, val, enumerable) {
     Object.defineProperty(obj, key, {
@@ -1375,6 +1376,7 @@
 
   /**
    * Helper that recursively merges two data objects together.
+   * 递归合并两个对象
    */
   function mergeData (to, from) {
     if (!from) { return to }
@@ -1847,7 +1849,9 @@
       // 没传也没有设置默认值
       if (absent && !hasOwn(prop, 'default')) {
         value = false;
-      } else if (value === '' || value === hyphenate(key)) {
+      }
+      // 判断传""字符串时，如果prop的类型有Boolean也有String，应该设置为true还是""
+      else if (value === '' || value === hyphenate(key)) {
         // only cast empty string / same name to boolean if
         // boolean has higher priority
         var stringIndex = getTypeIndex(String, prop.type);
@@ -1866,9 +1870,11 @@
       // make sure to observe it.
       // 响应式默认值
       var prevShouldObserve = shouldObserve;
-      toggleObserving(true); // 开启响应式
+      // 开启响应式
+      toggleObserving(true); 
       observe(value);
-      toggleObserving(prevShouldObserve); // 恢复响应式
+      // 恢复响应式
+      toggleObserving(prevShouldObserve); 
     }
     {
       assertProp(prop, key, value, vm, absent);
@@ -7505,6 +7511,7 @@
   /**
    * Runtime helper for rendering v-for lists.
    */
+  // 渲染v-for列表
   function renderList (
     val,
     render
@@ -7550,6 +7557,7 @@
   /**
    * Runtime helper for rendering <slot>
    */
+  // 渲染插槽
   function renderSlot (
     name,
     fallbackRender,
@@ -7633,6 +7641,7 @@
   /**
    * Runtime helper for merging v-bind="object" into a VNode's data.
    */
+  // v-bind绑定对象
   function bindObjectProps (
     data,
     tag,
@@ -7747,7 +7756,7 @@
   }
 
   /*  */
-
+  // v-on绑定一个事件对象
   function bindObjectListeners (data, value) {
     if (value) {
       if (!isPlainObject(value)) {
@@ -7849,6 +7858,7 @@
   /**
    * Runtime helper for resolving raw children VNodes into a slot object.
    */
+  // 处理子组件在父组件渲染时，把children处理成$slots
   function resolveSlots (
     children,
     context
@@ -7861,11 +7871,13 @@
       var child = children[i];
       var data = child.data;
       // remove slot attribute if the node is resolved as a Vue slot node
+      // <span slot="header"></span>，废弃属性，指定具名插槽，作用和v-slot一样，
       if (data && data.attrs && data.attrs.slot) {
         delete data.attrs.slot;
       }
       // named slots should only be respected if the vnode was rendered in the
       // same context.
+      // 具名插槽
       if ((child.context === context || child.fnContext === context) &&
         data && data.slot != null
       ) {
@@ -7876,7 +7888,9 @@
         } else {
           slot.push(child);
         }
-      } else {
+      }
+      // 默认插槽
+      else {
         (slots.default || (slots.default = [])).push(child);
       }
     }
@@ -8186,6 +8200,12 @@
         invokeWithErrorHandling(handlers[i], vm, null, vm, info);
       }
     }
+    /**
+     * 父组件通过@hook:[xxx]监听子组件的生命周期，比如
+     * <hello-world @hook:updated="hookUpdate"></hello-world>
+     * 子组件初始化事件系统时，会判断事件名是否包括hook:，包括的话则会把_hasHookEvent设置为true，
+     * callHook调用时，则会触发对应的事件
+     */
     if (vm._hasHookEvent) {
       vm.$emit('hook:' + hook);
     }
@@ -8461,7 +8481,18 @@
   // vue虚拟DOM依赖的开源库的hook函数
   var componentVNodeHooks = {
     init: function init (vnode, hydrating) {
-      // keep-alive逻辑
+      /**
+       * <template>
+       *   <div>
+       *     <keep-alive>
+       *       <component :is="name"></component>
+       *     </keep-alive>
+       *   </div>
+       * </template>
+       * 切换组件时，会重新执行init钩子，
+       */
+      // keep-alive逻辑，直接走if逻辑，不会走else中的child.$mount()逻辑，
+      // 因为keep-alive会直接将保存的Vnode的elm插入到父元素中
       if (
         vnode.componentInstance &&
         !vnode.componentInstance._isDestroyed &&
@@ -8469,6 +8500,7 @@
       ) {
         // kept-alive components, treat as a patch
         var mountedNode = vnode; // work around flow
+        // 注意点，keepalive组件的prepatch传递两个相同的Vnode
         componentVNodeHooks.prepatch(mountedNode, mountedNode);
       }
       // 递归处理子组件的逻辑
@@ -8678,7 +8710,7 @@
         hooks[key] = existing ? mergeHook$1(toMerge, existing) : toMerge;
       }
     }
-  }
+  } 
   // 合并hook
   function mergeHook$1 (f1, f2) {
     var merged = function (a, b) {

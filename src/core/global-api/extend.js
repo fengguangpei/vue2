@@ -51,6 +51,21 @@ export function initExtend (Vue: GlobalAPI) {
     // the Vue instances at extension time, on the extended prototype. This
     // avoids Object.defineProperty calls for each instance created.
     // 把props、computed代理到原型上，避免每个实例都执行一次
+    /**
+     * const Child = Vue.extend({
+     *  props: {
+     *    name: String
+     *  }
+     * })
+     * const VM = new Child({
+     *  props: {
+     *    age: Number
+     *  }
+     * })
+     * 实例化时会根据options.props格式化options.props，
+     * 然后再根据config全局配置的合并策略和Vue.extend()时的props合并，
+     * 但是并不会代理Vue.extend()时的传递的props，所以extend的时候必须初始化好props
+     */
     if (Sub.options.props) {
       initProps(Sub)
     }
@@ -92,6 +107,7 @@ export function initExtend (Vue: GlobalAPI) {
 
 function initProps (Comp) {
   const props = Comp.options.props
+  // 代理原型上的key，到_props上取值
   for (const key in props) {
     proxy(Comp.prototype, `_props`, key)
   }

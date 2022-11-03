@@ -5,6 +5,7 @@ import { extend, warn, isObject } from 'core/util/index'
 /**
  * Runtime helper for rendering <slot>
  */
+// 渲染插槽
 export function renderSlot (
   name: string,
   fallbackRender: ?((() => Array<VNode>) | Array<VNode>),

@@ -1,7 +1,7 @@
 /* @flow */
 
 import { warn, extend, isPlainObject } from 'core/util/index'
-
+// v-on绑定一个事件对象
 export function bindObjectListeners (data: any, value: any): VNodeData {
   if (value) {
     if (!isPlainObject(value)) {

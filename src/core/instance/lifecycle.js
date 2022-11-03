@@ -24,6 +24,7 @@ export let isUpdatingChildComponent: boolean = false
 export function setActiveInstance(vm: Component) {
   const prevActiveInstance = activeInstance
   activeInstance = vm
+  // 返回一个还原当前激活实例的方法
   return () => {
     activeInstance = prevActiveInstance
   }
@@ -124,6 +125,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // remove self from parent
     // 从父组件中删除自己
     const parent = vm.$parent
+    // 存在父组件 && 父组件没有销毁 && 父组件不是抽象组件
     if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
       remove(parent.$children, vm)
     }
@@ -386,6 +388,12 @@ export function callHook (vm: Component, hook: string) {
       invokeWithErrorHandling(handlers[i], vm, null, vm, info)
     }
   }
+  /**
+   * 父组件通过@hook:[xxx]监听子组件的生命周期，比如
+   * <hello-world @hook:updated="hookUpdate"></hello-world>
+   * 子组件初始化事件系统时，会判断事件名是否包括hook:，包括的话则会把_hasHookEvent设置为true，
+   * callHook调用时，则会触发对应的事件
+   */
   if (vm._hasHookEvent) {
     vm.$emit('hook:' + hook)
   }

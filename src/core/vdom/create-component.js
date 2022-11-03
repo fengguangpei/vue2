@@ -1,7 +1,7 @@
 /* @flow */
 
 import VNode from './vnode'
-import { resolveConstructorOptions } from 'core/instance/init'
+import { resolveConstructorOptions } from 'core/instance/  '
 import { queueActivatedComponent } from 'core/observer/scheduler'
 import { createFunctionalComponent } from './create-functional-component'
 

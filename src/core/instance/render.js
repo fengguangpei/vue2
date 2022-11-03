@@ -20,8 +20,11 @@ export function initRender (vm: Component) {
   vm._vnode = null // the root of the child tree
   vm._staticTrees = null // v-once cached trees
   const options = vm.$options
+  // _parentVnode是子组件在父组件的Vnode
   const parentVnode = vm.$vnode = options._parentVnode // the placeholder node in parent tree
+  // renderContext，父组件实例
   const renderContext = parentVnode && parentVnode.context
+  // h('ChildComponent', {}, [])，_renderChildren就是第三个参数数组
   vm.$slots = resolveSlots(options._renderChildren, renderContext)
   vm.$scopedSlots = emptyObject
   // bind the createElement fn to this instance

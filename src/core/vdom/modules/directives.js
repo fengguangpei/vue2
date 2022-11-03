@@ -3,7 +3,7 @@
 import { emptyNode } from 'core/vdom/patch'
 import { resolveAsset, handleError } from 'core/util/index'
 import { mergeVNodeHook } from 'core/vdom/helpers/index'
-
+// 注册钩子函数，处理指令逻辑
 export default {
   create: updateDirectives,
   update: updateDirectives,
@@ -19,12 +19,16 @@ function updateDirectives (oldVnode: VNodeWithData, vnode: VNodeWithData) {
 }
 
 function _update (oldVnode, vnode) {
+  // 新创建节点
   const isCreate = oldVnode === emptyNode
+  // 正在销毁节点
   const isDestroy = vnode === emptyNode
+  // 格式化指令
   const oldDirs = normalizeDirectives(oldVnode.data.directives, oldVnode.context)
   const newDirs = normalizeDirectives(vnode.data.directives, vnode.context)
-
+  // 需要触发insert钩子函数的指令列表
   const dirsWithInsert = []
+  // 需要触发postPatch钩子函数的指令列表
   const dirsWithPostpatch = []
 
   let key, oldDir, dir
@@ -33,7 +37,9 @@ function _update (oldVnode, vnode) {
     dir = newDirs[key]
     if (!oldDir) {
       // new directive, bind
+      // 新指令，调用bind钩子函数
       callHook(dir, 'bind', vnode, oldVnode)
+      // 收集需要触发insert指令的指令
       if (dir.def && dir.def.inserted) {
         dirsWithInsert.push(dir)
       }
@@ -41,7 +47,9 @@ function _update (oldVnode, vnode) {
       // existing directive, update
       dir.oldValue = oldDir.value
       dir.oldArg = oldDir.arg
+      // 触发update钩子函数
       callHook(dir, 'update', vnode, oldVnode)
+      // 收集需要触发postPatch钩子函数的指令
       if (dir.def && dir.def.componentUpdated) {
         dirsWithPostpatch.push(dir)
       }
@@ -54,13 +62,16 @@ function _update (oldVnode, vnode) {
         callHook(dirsWithInsert[i], 'inserted', vnode, oldVnode)
       }
     }
+    // 新创建vnode，合并insert钩子函数
     if (isCreate) {
       mergeVNodeHook(vnode, 'insert', callInsert)
-    } else {
+    }
+    // 直接调用
+    else {
       callInsert()
     }
   }
-
+  // 合并postPatch钩子函数
   if (dirsWithPostpatch.length) {
     mergeVNodeHook(vnode, 'postpatch', () => {
       for (let i = 0; i < dirsWithPostpatch.length; i++) {
@@ -68,7 +79,7 @@ function _update (oldVnode, vnode) {
       }
     })
   }
-
+  // 旧节点有，新节点没有的指令。执行unbind钩子函数
   if (!isCreate) {
     for (key in oldDirs) {
       if (!newDirs[key]) {

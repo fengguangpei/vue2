@@ -9,37 +9,49 @@
 </head>
 <body>
   <div id="app">
-    <keep-alive>
-      <component :is="name"></component>
-    </keep-alive>
-    <button @click="change">change</button>
+    
   </div>
   <script>
-    const VM = new Vue({
+    const vm = new Vue({
       el: "#app",
+      data() {
+        return {
+          name: 'parent'
+        }
+      },
       components: {
-        A: {
-          template: '<h1>A</h1>',
-        },
-        B: {
-          template: '<h1>B</h1>',
-          mounted() {
-            console.log(this.$parent)
+        HelloWorld: {
+          methods: {
+            destroy () {
+              this.$destroy();
+            }
+          },
+          render(h) {
+            return h('button', {
+              on: {
+                click: this.destroy
+              }
+            }, "Destroy")
+          },
+          created() {
+            console.log("created")
           }
         }
       },
-      data() {
-        return {
-          name: 'A'
-        }
-      },
       methods: {
-        change() {
-          this.name = this.name === 'A' ? 'B' : 'A';
+        change(vnode) {
+          console.log(vnode)
+          this.name = "viewport"
         }
       },
-      updated() {
-        console.log('updated')
+      render(h) {
+        return h('div', {
+          hook: {
+            init() {
+              debugger
+            }
+          }
+        }, 'div')
       }
     })
   </script>

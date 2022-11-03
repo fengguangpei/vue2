@@ -96,6 +96,11 @@ Vue.prototype.$mount = function (
  * Get outerHTML of elements, taking care
  * of SVG elements in IE as well.
  */
+/**
+ * innerHtml、outerHtml的区别，
+ * innerHtml返回内部HTML节点，不包括当前节点
+ * outerHtml返回当前节点及内部节点
+ */
 function getOuterHTML (el: Element): string {
   if (el.outerHTML) {
     return el.outerHTML

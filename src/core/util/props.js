@@ -36,7 +36,9 @@ export function validateProp (
     // 没传也没有设置默认值
     if (absent && !hasOwn(prop, 'default')) {
       value = false
-    } else if (value === '' || value === hyphenate(key)) {
+    }
+    // 判断传""字符串时，如果prop的类型有Boolean也有String，应该设置为true还是""
+    else if (value === '' || value === hyphenate(key)) {
       // only cast empty string / same name to boolean if
       // boolean has higher priority
       const stringIndex = getTypeIndex(String, prop.type)
@@ -55,9 +57,11 @@ export function validateProp (
     // make sure to observe it.
     // 响应式默认值
     const prevShouldObserve = shouldObserve
-    toggleObserving(true) // 开启响应式
+    // 开启响应式
+    toggleObserving(true) 
     observe(value)
-    toggleObserving(prevShouldObserve) // 恢复响应式
+    // 恢复响应式
+    toggleObserving(prevShouldObserve) 
   }
   if (
     process.env.NODE_ENV !== 'production' &&

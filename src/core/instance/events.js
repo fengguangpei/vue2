@@ -119,6 +119,7 @@ export function eventsMixin (Vue: Class<Component>) {
     let i = cbs.length
     while (i--) {
       cb = cbs[i]
+      // cb.fn兼容once注册时，函数名对不上的问题
       if (cb === fn || cb.fn === fn) {
         cbs.splice(i, 1)
         break

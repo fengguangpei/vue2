@@ -486,6 +486,7 @@
 
   /**
    * Check if a string starts with $ or _
+   * 是否是保留属性
    */
   function isReserved (str) {
     var c = (str + '').charCodeAt(0);
@@ -494,6 +495,7 @@
 
   /**
    * Define a property.
+   * defineProperty包装函数
    */
   function def (obj, key, val, enumerable) {
     Object.defineProperty(obj, key, {
@@ -506,6 +508,7 @@
 
   /**
    * Parse simple path.
+   * 根据属性路径生成一个访问对象属性的方法
    */
   var bailRE = new RegExp(("[^" + (unicodeRegExp.source) + ".$_\\d]"));
   function parsePath (path) {
@@ -1262,6 +1265,7 @@
 
   /**
    * Helper that recursively merges two data objects together.
+   * 递归合并两个对象
    */
   function mergeData (to, from) {
     if (!from) { return to }
@@ -1734,7 +1738,9 @@
       // 没传也没有设置默认值
       if (absent && !hasOwn(prop, 'default')) {
         value = false;
-      } else if (value === '' || value === hyphenate(key)) {
+      }
+      // 判断传""字符串时，如果prop的类型有Boolean也有String，应该设置为true还是""
+      else if (value === '' || value === hyphenate(key)) {
         // only cast empty string / same name to boolean if
         // boolean has higher priority
         var stringIndex = getTypeIndex(String, prop.type);
@@ -1753,9 +1759,11 @@
       // make sure to observe it.
       // 响应式默认值
       var prevShouldObserve = shouldObserve;
-      toggleObserving(true); // 开启响应式
+      // 开启响应式
+      toggleObserving(true); 
       observe(value);
-      toggleObserving(prevShouldObserve); // 恢复响应式
+      // 恢复响应式
+      toggleObserving(prevShouldObserve); 
     }
     {
       assertProp(prop, key, value, vm, absent);
@@ -2684,6 +2692,7 @@
   /**
    * Runtime helper for resolving raw children VNodes into a slot object.
    */
+  // 处理子组件在父组件渲染时，把children处理成$slots
   function resolveSlots (
     children,
     context
@@ -2696,11 +2705,13 @@
       var child = children[i];
       var data = child.data;
       // remove slot attribute if the node is resolved as a Vue slot node
+      // <span slot="header"></span>，废弃属性，指定具名插槽，作用和v-slot一样，
       if (data && data.attrs && data.attrs.slot) {
         delete data.attrs.slot;
       }
       // named slots should only be respected if the vnode was rendered in the
       // same context.
+      // 具名插槽
       if ((child.context === context || child.fnContext === context) &&
         data && data.slot != null
       ) {
@@ -2711,7 +2722,9 @@
         } else {
           slot.push(child);
         }
-      } else {
+      }
+      // 默认插槽
+      else {
         (slots.default || (slots.default = [])).push(child);
       }
     }
@@ -2821,6 +2834,7 @@
   /**
    * Runtime helper for rendering v-for lists.
    */
+  // 渲染v-for列表
   function renderList (
     val,
     render
@@ -2866,6 +2880,7 @@
   /**
    * Runtime helper for rendering <slot>
    */
+  // 渲染插槽
   function renderSlot (
     name,
     fallbackRender,
@@ -2949,6 +2964,7 @@
   /**
    * Runtime helper for merging v-bind="object" into a VNode's data.
    */
+  // v-bind绑定对象
   function bindObjectProps (
     data,
     tag,
@@ -3063,7 +3079,7 @@
   }
 
   /*  */
-
+  // v-on绑定一个事件对象
   function bindObjectListeners (data, value) {
     if (value) {
       if (!isPlainObject(value)) {
@@ -3305,7 +3321,18 @@
   // vue虚拟DOM依赖的开源库的hook函数
   var componentVNodeHooks = {
     init: function init (vnode, hydrating) {
-      // keep-alive逻辑
+      /**
+       * <template>
+       *   <div>
+       *     <keep-alive>
+       *       <component :is="name"></component>
+       *     </keep-alive>
+       *   </div>
+       * </template>
+       * 切换组件时，会重新执行init钩子，
+       */
+      // keep-alive逻辑，直接走if逻辑，不会走else中的child.$mount()逻辑，
+      // 因为keep-alive会直接将保存的Vnode的elm插入到父元素中
       if (
         vnode.componentInstance &&
         !vnode.componentInstance._isDestroyed &&
@@ -3313,6 +3340,7 @@
       ) {
         // kept-alive components, treat as a patch
         var mountedNode = vnode; // work around flow
+        // 注意点，keepalive组件的prepatch传递两个相同的Vnode
         componentVNodeHooks.prepatch(mountedNode, mountedNode);
       }
       // 递归处理子组件的逻辑
@@ -3522,7 +3550,7 @@
         hooks[key] = existing ? mergeHook$1(toMerge, existing) : toMerge;
       }
     }
-  }
+  } 
   // 合并hook
   function mergeHook$1 (f1, f2) {
     var merged = function (a, b) {
@@ -3770,8 +3798,11 @@
     vm._vnode = null; // the root of the child tree
     vm._staticTrees = null; // v-once cached trees
     var options = vm.$options;
+    // _parentVnode是子组件在父组件的Vnode
     var parentVnode = vm.$vnode = options._parentVnode; // the placeholder node in parent tree
+    // renderContext，父组件实例
     var renderContext = parentVnode && parentVnode.context;
+    // h('ChildComponent', {}, [])，_renderChildren就是第三个参数数组
     vm.$slots = resolveSlots(options._renderChildren, renderContext);
     vm.$scopedSlots = emptyObject;
     // bind the createElement fn to this instance
@@ -4056,7 +4087,7 @@
   }
 
   /*  */
-
+  // 获取children的第一个组件Vnode
   function getFirstComponentChild (children) {
     if (Array.isArray(children)) {
       for (var i = 0; i < children.length; i++) {
@@ -4180,6 +4211,7 @@
       var i = cbs.length;
       while (i--) {
         cb = cbs[i];
+        // cb.fn兼容once注册时，函数名对不上的问题
         if (cb === fn || cb.fn === fn) {
           cbs.splice(i, 1);
           break
@@ -4227,6 +4259,7 @@
   function setActiveInstance(vm) {
     var prevActiveInstance = activeInstance;
     activeInstance = vm;
+    // 返回一个还原当前激活实例的方法
     return function () {
       activeInstance = prevActiveInstance;
     }
@@ -4327,6 +4360,7 @@
       // remove self from parent
       // 从父组件中删除自己
       var parent = vm.$parent;
+      // 存在父组件 && 父组件没有销毁 && 父组件不是抽象组件
       if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
         remove(parent.$children, vm);
       }
@@ -4589,6 +4623,12 @@
         invokeWithErrorHandling(handlers[i], vm, null, vm, info);
       }
     }
+    /**
+     * 父组件通过@hook:[xxx]监听子组件的生命周期，比如
+     * <hello-world @hook:updated="hookUpdate"></hello-world>
+     * 子组件初始化事件系统时，会判断事件名是否包括hook:，包括的话则会把_hasHookEvent设置为true，
+     * callHook调用时，则会触发对应的事件
+     */
     if (vm._hasHookEvent) {
       vm.$emit('hook:' + hook);
     }
@@ -4598,17 +4638,22 @@
   /*  */
 
   var MAX_UPDATE_COUNT = 100;
-
+  // 队列
   var queue = [];
   var activatedChildren = [];
+  // 哈希，记录一个watcher是否已经添加
   var has = {};
   var circular = {};
+  // 已把队列添加到事件循环中，等待执行
   var waiting = false;
+  // 是否正在刷新队列
   var flushing = false;
+  // 遍历执行到那个watcher了
   var index = 0;
 
   /**
    * Reset the scheduler's state.
+   * 重新设置任务队列的相关状态
    */
   function resetSchedulerState () {
     index = queue.length = activatedChildren.length = 0;
@@ -4652,6 +4697,7 @@
 
   /**
    * Flush both queues and run the watchers.
+   * 刷新队列
    */
   function flushSchedulerQueue () {
     currentFlushTimestamp = getNow();
@@ -4670,6 +4716,7 @@
 
     // do not cache length because more watchers might be pushed
     // as we run existing watchers
+    // 没有缓存queue.length，因为遍历queue期间可能有新的watcher加入
     for (index = 0; index < queue.length; index++) {
       watcher = queue[index];
       if (watcher.before) {
@@ -4711,7 +4758,7 @@
       devtools.emit('flush');
     }
   }
-
+  // 调用updated钩子函数
   function callUpdatedHooks (queue) {
     var i = queue.length;
     while (i--) {
@@ -4733,7 +4780,7 @@
     vm._inactive = false;
     activatedChildren.push(vm);
   }
-
+  // 调用activated钩子函数
   function callActivatedHooks (queue) {
     for (var i = 0; i < queue.length; i++) {
       queue[i]._inactive = true;
@@ -4755,6 +4802,7 @@
       if (!flushing) {
         queue.push(watcher);
       } else {
+        // 队列已经在刷新了，根据ID排序，插入到队列中
         // if already flushing, splice the watcher based on its id
         // if already past its id, it will be run next immediately.
         var i = queue.length - 1;
@@ -5516,6 +5564,13 @@
     opts.propsData = vnodeComponentOptions.propsData;
     // 父组件设置的事件监听函数
     opts._parentListeners = vnodeComponentOptions.listeners;
+    /**
+     * <hello-world>
+     *  <h1 #header></h1>
+     *  <h1 #footer></h1>
+     * </hello-world>
+     * 其中的两个h1对应的Vnode就是children
+     */
     opts._renderChildren = vnodeComponentOptions.children;
     opts._componentTag = vnodeComponentOptions.tag;
 
@@ -5794,6 +5849,21 @@
       // the Vue instances at extension time, on the extended prototype. This
       // avoids Object.defineProperty calls for each instance created.
       // 把props、computed代理到原型上，避免每个实例都执行一次
+      /**
+       * const Child = Vue.extend({
+       *  props: {
+       *    name: String
+       *  }
+       * })
+       * const VM = new Child({
+       *  props: {
+       *    age: Number
+       *  }
+       * })
+       * 实例化时会根据options.props格式化options.props，
+       * 然后再根据config全局配置的合并策略和Vue.extend()时的props合并，
+       * 但是并不会代理Vue.extend()时的传递的props，所以extend的时候必须初始化好props
+       */
       if (Sub.options.props) {
         initProps$1(Sub);
       }
@@ -5835,6 +5905,7 @@
 
   function initProps$1 (Comp) {
     var props = Comp.options.props;
+    // 代理原型上的key，到_props上取值
     for (var key in props) {
       proxy(Comp.prototype, "_props", key);
     }
@@ -5852,6 +5923,7 @@
   function initAssetRegisters (Vue) {
     /**
      * Create asset registration methods.
+     * component、directive、filter
      */
     ASSET_TYPES.forEach(function (type) {
       Vue[type] = function (
@@ -6505,6 +6577,7 @@
 
   var hooks = ['create', 'activate', 'update', 'remove', 'destroy'];
   // 判断两个节点是否是相同节点
+  // 不同组件的Vnode的tag是不一样的
   function sameVnode (a, b) {
     return (
       a.key === b.key &&
@@ -6698,7 +6771,9 @@
         if (isDef(vnode.componentInstance)) {
           initComponent(vnode, insertedVnodeQueue);
           // 添加到父元素，这里可以解释子组件是怎么插入到父组件的
+          // keep-alive中vnode.elm是上一次保存的
           insert(parentElm, vnode.elm, refElm);
+          // keep-alive逻辑处理
           if (isTrue(isReactivated)) {
             reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm);
           }
@@ -6831,11 +6906,14 @@
     }
     // 递归销毁实例
     function invokeDestroyHook (vnode) {
+      debugger
       var i, j;
       var data = vnode.data;
       // 调用相关的hook钩子函数
       if (isDef(data)) {
+        // 自定义destroy hook钩子函数
         if (isDef(i = data.hook) && isDef(i = i.destroy)) { i(vnode); }
+        // 处理class、style绑定等属性的destroy钩子函数
         for (i = 0; i < cbs.destroy.length; ++i) { cbs.destroy[i](vnode); }
       }
       // 递归卸载子组件
@@ -7077,6 +7155,7 @@
       }
       // 新的节点是否有text属性，若没有：
       if (isUndef(vnode.text)) {
+        debugger
         // vnode和oldVnode都存在子节点
         if (isDef(oldCh) && isDef(ch)) {
           if (oldCh !== ch) { updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly); }
@@ -7257,11 +7336,15 @@
         createElm(vnode, insertedVnodeQueue);
       }
       else {
+        // 是否是原生元素
         var isRealElement = isDef(oldVnode.nodeType);
+        // 不是原生元素，oldVnode和vnode为同一节点
         if (!isRealElement && sameVnode(oldVnode, vnode)) {
           // patch existing root node
           patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly);
-        } else {
+        }
+        else {
+          // 是真实元素，则表示是初次渲染
           if (isRealElement) {
             // mounting to a real element
             // check if this is server-rendered content and if we can perform
@@ -7292,8 +7375,9 @@
           // replacing existing element
           var oldElm = oldVnode.elm;
           var parentElm = nodeOps.parentNode(oldElm);
-          debugger
+        
           // create new node
+          // keep-alive切换时走这里
           createElm(
             vnode,
             insertedVnodeQueue,
@@ -12852,6 +12936,11 @@
   /**
    * Get outerHTML of elements, taking care
    * of SVG elements in IE as well.
+   */
+  /**
+   * innerHtml、outerHtml的区别，
+   * innerHtml返回内部HTML节点，不包括当前节点
+   * outerHtml返回当前节点及内部节点
    */
   function getOuterHTML (el) {
     if (el.outerHTML) {
