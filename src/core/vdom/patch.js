@@ -413,7 +413,9 @@ export function createPatchFunction (backend) {
       for (i = 0; i < cbs.remove.length; ++i) {
         cbs.remove[i](vnode, rm)
       }
+      // 自定义remove
       if (isDef(i = vnode.data.hook) && isDef(i = i.remove)) {
+        // 暴露rm
         i(vnode, rm)
       } else {
         rm()
@@ -771,6 +773,12 @@ export function createPatchFunction (backend) {
   /**
    * hydrating: 服务端渲染用到
    * removeOnly: transition group用到
+   * new Vue({
+   *  el: "#app"
+   * })
+   * new Vue的patch不同于组件的patch，
+   * new Vue()挂载的时候，oldVnode的值是<div id="app"></div>这个元素
+   * 组件挂载的时候，oldVnode的值是undefined
    */
   return function patch (oldVnode, vnode, hydrating, removeOnly) {
     // 如果没有新的虚拟节点，则销毁
@@ -801,24 +809,9 @@ export function createPatchFunction (backend) {
           // mounting to a real element
           // check if this is server-rendered content and if we can perform
           // a successful hydration.
-          if (oldVnode.nodeType === 1 && oldVnode.hasAttribute(SSR_ATTR)) {
-            oldVnode.removeAttribute(SSR_ATTR)
-            hydrating = true
-          }
-          if (isTrue(hydrating)) {
-            if (hydrate(oldVnode, vnode, insertedVnodeQueue)) {
-              invokeInsertHook(vnode, insertedVnodeQueue, true)
-              return oldVnode
-            } else if (process.env.NODE_ENV !== 'production') {
-              warn(
-                'The client-side rendered virtual DOM tree is not matching ' +
-                'server-rendered content. This is likely caused by incorrect ' +
-                'HTML markup, for example nesting block-level elements inside ' +
-                '<p>, or missing <tbody>. Bailing hydration and performing ' +
-                'full client-side render.'
-              )
-            }
-          }
+          /**
+           * 服务端渲染逻辑，已删
+           */
           // either not server-rendered, or hydration failed.
           // create an empty node and replace it
           oldVnode = emptyNodeAt(oldVnode)
@@ -827,9 +820,7 @@ export function createPatchFunction (backend) {
         // replacing existing element
         const oldElm = oldVnode.elm
         const parentElm = nodeOps.parentNode(oldElm)
-      
         // create new node
-        // keep-alive切换时走这里
         createElm(
           vnode,
           insertedVnodeQueue,
@@ -839,7 +830,6 @@ export function createPatchFunction (backend) {
           oldElm._leaveCb ? null : parentElm,
           nodeOps.nextSibling(oldElm)
         )
-        
         // update parent placeholder node element, recursively
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent

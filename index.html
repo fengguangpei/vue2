@@ -9,49 +9,29 @@
 </head>
 <body>
   <div id="app">
-    
+    <test-a></test-a>
+    <button @click="change">Change</button>
   </div>
   <script>
-    const vm = new Vue({
+    const VM = new Vue({
       el: "#app",
       data() {
         return {
-          name: 'parent'
-        }
-      },
-      components: {
-        HelloWorld: {
-          methods: {
-            destroy () {
-              this.$destroy();
-            }
-          },
-          render(h) {
-            return h('button', {
-              on: {
-                click: this.destroy
-              }
-            }, "Destroy")
-          },
-          created() {
-            console.log("created")
-          }
+          name: "TestA"
         }
       },
       methods: {
-        change(vnode) {
-          console.log(vnode)
-          this.name = "viewport"
+        change() {
+          this.name = this.name === "TestA" ? "TestB" : "TestA"
         }
       },
-      render(h) {
-        return h('div', {
-          hook: {
-            init() {
-              debugger
-            }
-          }
-        }, 'div')
+      components: {
+        TestA: {
+          template: "<div>TestA</div>",
+        },
+        TestB: {
+          template: "<div>TestB</div>",
+        }
       }
     })
   </script>

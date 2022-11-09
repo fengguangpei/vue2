@@ -6926,7 +6926,6 @@ function createPatchFunction (backend) {
   }
   // 递归销毁实例
   function invokeDestroyHook (vnode) {
-    debugger
     let i, j;
     const data = vnode.data;
     // 调用相关的hook钩子函数
@@ -6958,7 +6957,7 @@ function createPatchFunction (backend) {
       }
     }
   }
-
+  // 触发remove钩子函数
   function removeAndInvokeRemoveHook (vnode, rm) {
     if (isDef(rm) || isDef(vnode.data)) {
       let i;
@@ -7175,7 +7174,6 @@ function createPatchFunction (backend) {
     }
     // 新的节点是否有text属性，若没有：
     if (isUndef(vnode.text)) {
-      debugger
       // vnode和oldVnode都存在子节点
       if (isDef(oldCh) && isDef(ch)) {
         if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly);
@@ -7337,6 +7335,12 @@ function createPatchFunction (backend) {
   /**
    * hydrating: 服务端渲染用到
    * removeOnly: transition group用到
+   * new Vue({
+   *  el: "#app"
+   * })
+   * new Vue的patch不同于组件的patch，
+   * new Vue()挂载的时候，oldVnode的值是<div id="app"></div>这个元素
+   * 组件挂载的时候，oldVnode的值是undefined
    */
   return function patch (oldVnode, vnode, hydrating, removeOnly) {
     // 如果没有新的虚拟节点，则销毁
@@ -7393,9 +7397,7 @@ function createPatchFunction (backend) {
         // replacing existing element
         const oldElm = oldVnode.elm;
         const parentElm = nodeOps.parentNode(oldElm);
-      
         // create new node
-        // keep-alive切换时走这里
         createElm(
           vnode,
           insertedVnodeQueue,
@@ -7405,7 +7407,7 @@ function createPatchFunction (backend) {
           oldElm._leaveCb ? null : parentElm,
           nodeOps.nextSibling(oldElm)
         );
-        
+        debugger
         // update parent placeholder node element, recursively
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent;
@@ -7452,7 +7454,7 @@ function createPatchFunction (backend) {
 }
 
 /*  */
-
+// 注册钩子函数，处理指令逻辑
 var directives = {
   create: updateDirectives,
   update: updateDirectives,
@@ -7468,12 +7470,16 @@ function updateDirectives (oldVnode, vnode) {
 }
 
 function _update (oldVnode, vnode) {
+  // 新创建节点
   const isCreate = oldVnode === emptyNode;
+  // 正在销毁节点
   const isDestroy = vnode === emptyNode;
+  // 格式化指令
   const oldDirs = normalizeDirectives$1(oldVnode.data.directives, oldVnode.context);
   const newDirs = normalizeDirectives$1(vnode.data.directives, vnode.context);
-
+  // 需要触发insert钩子函数的指令列表
   const dirsWithInsert = [];
+  // 需要触发postPatch钩子函数的指令列表
   const dirsWithPostpatch = [];
 
   let key, oldDir, dir;
@@ -7482,7 +7488,9 @@ function _update (oldVnode, vnode) {
     dir = newDirs[key];
     if (!oldDir) {
       // new directive, bind
+      // 新指令，调用bind钩子函数
       callHook$1(dir, 'bind', vnode, oldVnode);
+      // 收集需要触发insert指令的指令
       if (dir.def && dir.def.inserted) {
         dirsWithInsert.push(dir);
       }
@@ -7490,7 +7498,9 @@ function _update (oldVnode, vnode) {
       // existing directive, update
       dir.oldValue = oldDir.value;
       dir.oldArg = oldDir.arg;
+      // 触发update钩子函数
       callHook$1(dir, 'update', vnode, oldVnode);
+      // 收集需要触发postPatch钩子函数的指令
       if (dir.def && dir.def.componentUpdated) {
         dirsWithPostpatch.push(dir);
       }
@@ -7503,13 +7513,16 @@ function _update (oldVnode, vnode) {
         callHook$1(dirsWithInsert[i], 'inserted', vnode, oldVnode);
       }
     };
+    // 新创建vnode，合并insert钩子函数
     if (isCreate) {
       mergeVNodeHook(vnode, 'insert', callInsert);
-    } else {
+    }
+    // 直接调用
+    else {
       callInsert();
     }
   }
-
+  // 合并postPatch钩子函数
   if (dirsWithPostpatch.length) {
     mergeVNodeHook(vnode, 'postpatch', () => {
       for (let i = 0; i < dirsWithPostpatch.length; i++) {
@@ -7517,7 +7530,7 @@ function _update (oldVnode, vnode) {
       }
     });
   }
-
+  // 旧节点有，新节点没有的指令。执行unbind钩子函数
   if (!isCreate) {
     for (key in oldDirs) {
       if (!newDirs[key]) {
