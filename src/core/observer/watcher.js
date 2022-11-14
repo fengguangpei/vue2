@@ -147,6 +147,9 @@ export default class Watcher {
 
   /**
    * Add a dependency to this directive.
+   * 收集当前watch执行时，都会重新收集依赖，新旧两次执行时可能需要的依赖不一样，
+   * 所以心中newDeps、newDepIds两个数据结构收集最新的依赖
+   * 执行完后，执行cleanupDeps对比新旧两次的依赖，删除不需要的依赖
    */
   addDep (dep: Dep) {
     const id = dep.id
@@ -161,6 +164,7 @@ export default class Watcher {
 
   /**
    * Clean up for dependency collection.
+   * 对比新旧的依赖收集，删除不需要的依赖收集
    */
   cleanupDeps () {
     let i = this.deps.length

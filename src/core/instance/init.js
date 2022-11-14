@@ -55,7 +55,7 @@ export function initMixin (Vue) {
     // expose real self
     vm._self = vm
     // 声明周期相关, 新增了一批属性
-    // $parent、$rout $children $refs _watcher _inactive _directInactive _isMounted _isDestroyed _isBeingDestroyed
+    // $parent、$root $children $refs _watcher _inactive _directInactive _isMounted _isDestroyed _isBeingDestroyed
     initLifecycle(vm)
     // 事件处理相关
     // _events

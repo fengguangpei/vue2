@@ -9,31 +9,39 @@
 </head>
 <body>
   <div id="app">
-    <test-a></test-a>
-    <button @click="change">Change</button>
+    <todo-item v-for="(item, index) of arr" :key="item"></todo-item>
+    <button @click="add">ADD</button>
   </div>
   <script>
     const VM = new Vue({
       el: "#app",
+      components: {
+        TodoItem: {
+          template: "<li @click='add' style='cursor: pointer;'>{{ num }}</li>",
+          data() {
+            return {
+              num: 0
+            }
+          },
+          methods: {
+            add() {
+              console.log(this._data === this.$data)
+              this.num++;
+            }
+          }
+        }
+      },
       data() {
         return {
-          name: "TestA"
+          arr: [1, 2, 3, 4, 5]
         }
       },
       methods: {
-        change() {
-          this.name = this.name === "TestA" ? "TestB" : "TestA"
-        }
-      },
-      components: {
-        TestA: {
-          template: "<div>TestA</div>",
-        },
-        TestB: {
-          template: "<div>TestB</div>",
+        add() {
+          this.arr.unshift(0);
         }
       }
-    })
+    });
   </script>
 </body>
 </html>
