@@ -18,9 +18,10 @@ if (isIE9) {
     }
   })
 }
-
+// v-model除了这里指令的逻辑，在模版编译时也做了特殊处理
 const directive = {
   inserted (el, binding, vnode, oldVnode) {
+    debugger
     if (vnode.tag === 'select') {
       // #6903
       if (oldVnode.elm && !oldVnode.elm._vOptions) {
@@ -33,6 +34,7 @@ const directive = {
       el._vOptions = [].map.call(el.options, getValue)
     } else if (vnode.tag === 'textarea' || isTextInputType(el.type)) {
       el._vModifiers = binding.modifiers
+      // 默认监听input，如果没有设置lazy，则监听change事件，然后手动触发input事件
       if (!binding.modifiers.lazy) {
         el.addEventListener('compositionstart', onCompositionStart)
         el.addEventListener('compositionend', onCompositionEnd)
@@ -126,18 +128,18 @@ function getValue (option) {
     ? option._value
     : option.value
 }
-
+// 监听onCompositionStart
 function onCompositionStart (e) {
   e.target.composing = true
 }
-
+// 监听onCompositionEnd
 function onCompositionEnd (e) {
   // prevent triggering an input event for no reason
   if (!e.target.composing) return
   e.target.composing = false
   trigger(e.target, 'input')
 }
-
+// 手动触发自定义事件
 function trigger (el, type) {
   const e = document.createEvent('HTMLEvents')
   e.initEvent(type, true, true)

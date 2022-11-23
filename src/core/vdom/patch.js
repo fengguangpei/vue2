@@ -239,6 +239,17 @@ export function createPatchFunction (backend) {
   }
 
   function initComponent (vnode, insertedVnodeQueue) {
+    // 收集来自子组件的insert钩子函数
+    /**
+     * <div>
+     *  <keep-alive>
+     *    <hello-world>
+     *      
+     *    </hello-world>
+     *  </keep-alive>
+     * </div>
+     * hello-world的insert钩子函数添加到keep-alive中，keep-alive的钩子函数收集到根组件中
+     */
     if (isDef(vnode.data.pendingInsert)) {
       insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert)
       vnode.data.pendingInsert = null
@@ -649,6 +660,8 @@ export function createPatchFunction (backend) {
   function invokeInsertHook (vnode, queue, initial) {
     // delay insert hooks for component root nodes, invoke them after the
     // element is really inserted
+    // 如果vnode是一个组件的根节点，且是第一次渲染，
+    // 这里的parent是当前vnode作为组件在父组件中的vnode
     if (isTrue(initial) && isDef(vnode.parent)) {
       vnode.parent.data.pendingInsert = queue
     } else {
@@ -868,7 +881,11 @@ export function createPatchFunction (backend) {
         }
       }
     }
-
+    /**
+     * vnode：根虚拟节点
+     * insertedVnodeQueue：一个队列，存储需要执行inserted钩子函数的vnode
+     * isInitialPatch: 是否是初始化渲染
+     */
     invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch)
     // 并不会所有的Vnode都有父元素，比如根组件挂载的时候，返回这个元素直接替换#app
     return vnode.elm

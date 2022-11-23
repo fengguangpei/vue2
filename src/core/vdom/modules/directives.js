@@ -1,5 +1,9 @@
 /* @flow */
-
+// bind
+// inserted
+// update
+// componentUpdate
+// unbind
 import { emptyNode } from 'core/vdom/patch'
 import { resolveAsset, handleError } from 'core/util/index'
 import { mergeVNodeHook } from 'core/vdom/helpers/index'
@@ -32,6 +36,7 @@ function _update (oldVnode, vnode) {
   const dirsWithPostpatch = []
 
   let key, oldDir, dir
+  // 遍历指令
   for (key in newDirs) {
     oldDir = oldDirs[key]
     dir = newDirs[key]
@@ -62,7 +67,7 @@ function _update (oldVnode, vnode) {
         callHook(dirsWithInsert[i], 'inserted', vnode, oldVnode)
       }
     }
-    // 新创建vnode，合并insert钩子函数
+    // 新创建vnode，合并insert钩子函数到vnode.data.hook中
     if (isCreate) {
       mergeVNodeHook(vnode, 'insert', callInsert)
     }
@@ -118,7 +123,7 @@ function normalizeDirectives (
 function getRawDirName (dir: VNodeDirective): string {
   return dir.rawName || `${dir.name}.${Object.keys(dir.modifiers || {}).join('.')}`
 }
-
+// 调用指令钩子函数
 function callHook (dir, hook, vnode, oldVnode, isDestroy) {
   const fn = dir.def && dir.def[hook]
   if (fn) {

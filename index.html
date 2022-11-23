@@ -6,39 +6,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
   <script src="./dist/vue.js"></script>
+  <style>
+    .twoLines {
+      display: -webkit-box;
+      overflow: hidden;
+      overflow-wrap: break-word;
+      text-overflow: ellipsis;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      width: 100px;
+      margin: 20px auto;
+    }
+    .threeLines {
+      display: -webkit-box;
+      overflow: hidden;
+      overflow-wrap: break-word;
+      text-overflow: ellipsis;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+  </style>
 </head>
 <body>
   <div id="app">
-    <todo-item v-for="(item, index) of arr" :key="item"></todo-item>
-    <button @click="add">ADD</button>
+    <input type="text" v-model="name">
   </div>
   <script>
     const VM = new Vue({
       el: "#app",
-      components: {
-        TodoItem: {
-          template: "<li @click='add' style='cursor: pointer;'>{{ num }}</li>",
-          data() {
-            return {
-              num: 0
-            }
-          },
-          methods: {
-            add() {
-              console.log(this._data === this.$data)
-              this.num++;
-            }
-          }
-        }
-      },
       data() {
         return {
-          arr: [1, 2, 3, 4, 5]
-        }
-      },
-      methods: {
-        add() {
-          this.arr.unshift(0);
+          name: 'name'
         }
       }
     });
