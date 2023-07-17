@@ -1,21 +1,19 @@
-import { initMixin } from './init'
-import { stateMixin } from './state'
-import { renderMixin } from './render'
-import { eventsMixin } from './events'
-import { lifecycleMixin } from './lifecycle'
+import { initMixin } from "./init";
+import { stateMixin } from "./state";
+import { renderMixin } from "./render";
+import { eventsMixin } from "./events";
+import { lifecycleMixin } from "./lifecycle";
 // 控制台警告方法
-import { warn } from '../util/index'
+import { warn } from "../util/index";
 /** Vue构造函数 */
-function Vue (options) {
+function Vue(options) {
   /** 避免构造函数被直接调用 */
-  if (process.env.NODE_ENV !== 'production' &&
-    !(this instanceof Vue) 
-  ) {
-    warn('Vue is a constructor and should be called with the `new` keyword')
+  if (process.env.NODE_ENV !== "production" && !(this instanceof Vue)) {
+    warn("Vue is a constructor and should be called with the `new` keyword");
   }
-  this._init(options)
+  this._init(options);
 }
-/** 
+/**
  * Vue构造函数constructor
  * cid: number
  * compile: function
@@ -88,8 +86,8 @@ function Vue (options) {
  * }
  * length: 1 接收参数个数
  * name: Vue 构造函数名称
- * 
-*/
+ *
+ */
 /**
  * Vue构造函数：prototype
  * $delete: ƒ del(target, key)
@@ -137,19 +135,20 @@ function Vue (options) {
  * get $ssrContext: ƒ ()
  */
 /** 原型挂载初始化方法 */
-initMixin(Vue)
+// Vue.prototype._init
+initMixin(Vue);
 // 初始化和数据相关的原型属性和方法
 // Object.defineProperty(Vue.prototype, '$data', dataDef) 代理$data的访问到_data
 // Object.defineProperty(Vue.prototype, '$props', propsDef) 代理$props的访问到_props
-// $set、$delete、$watch、
-stateMixin(Vue)
+// Vue.prototype.$set、Vue.prototype.$delete、Vue.prototype.$watch、
+stateMixin(Vue);
 // 初始化和事件相关的原型方法
-// $on、$once、$off、$emit
-eventsMixin(Vue)
+// Vue.prototype.$on、Vue.prototype.$once、Vue.prototype.$off、Vue.prototype.$emit
+eventsMixin(Vue);
 // 初始化和组件生命周期相关的方法
-// _update、$forceUpdate、$destroy
-lifecycleMixin(Vue)
+// Vue.prototype._update、Vue.prototype.$forceUpdate、Vue.prototype.$destroy
+lifecycleMixin(Vue);
 // 初始化和渲染相关的方法
-// $nextTick、_render()、_isMounted、_isDestroyed
-renderMixin(Vue)
-export default Vue
+// Vue.prototype.$nextTick、Vue.prototype._render()、_isMounted、_isDestroyed
+renderMixin(Vue);
+export default Vue;

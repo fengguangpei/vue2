@@ -240,8 +240,10 @@ function def (obj, key, val, enumerable) {
  * 结束标签
  */
 // 对应的正则表达式
-var attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
-var dynamicArgAttribute = /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+?\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
+var attribute =
+  /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
+var dynamicArgAttribute =
+  /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+?\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
 var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z" + (unicodeRegExp.source) + "]*";
 var qnameCapture = "((?:" + ncname + "\\:)?" + ncname + ")";
 var startTagOpen = new RegExp(("^<" + qnameCapture));
@@ -249,71 +251,78 @@ var startTagClose = /^\s*(\/?)>/;
 var endTag = new RegExp(("^<\\/" + qnameCapture + "[^>]*>"));
 var doctype = /^<!DOCTYPE [^>]+>/i;
 // #7298: escape - to avoid being passed as HTML comment when inlined in page
+// HTML注释正则表达式
 var comment = /^<!\--/;
+// HTML降级条件注释
 var conditionalComment = /^<!\[/;
 
 // Special Elements (can contain anything)
-var isPlainTextElement = makeMap('script,style,textarea', true);
+var isPlainTextElement = makeMap("script,style,textarea", true);
 var reCache = {};
 
 var decodingMap = {
-  '&lt;': '<',
-  '&gt;': '>',
-  '&quot;': '"',
-  '&amp;': '&',
-  '&#10;': '\n',
-  '&#9;': '\t',
-  '&#39;': "'"
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&amp;": "&",
+  "&#10;": "\n",
+  "&#9;": "\t",
+  "&#39;": "'",
 };
 var encodedAttr = /&(?:lt|gt|quot|amp|#39);/g;
 var encodedAttrWithNewLines = /&(?:lt|gt|quot|amp|#39|#10|#9);/g;
 
 // #5992
-var isIgnoreNewlineTag = makeMap('pre,textarea', true);
-var shouldIgnoreFirstNewline = function (tag, html) { return tag && isIgnoreNewlineTag(tag) && html[0] === '\n'; };
+var isIgnoreNewlineTag = makeMap("pre,textarea", true);
+var shouldIgnoreFirstNewline = function (tag, html) { return tag && isIgnoreNewlineTag(tag) && html[0] === "\n"; };
 
-function decodeAttr (value, shouldDecodeNewlines) {
+function decodeAttr(value, shouldDecodeNewlines) {
   var re = shouldDecodeNewlines ? encodedAttrWithNewLines : encodedAttr;
-  return value.replace(re, function (match) { return decodingMap[match]; })
+  return value.replace(re, function (match) { return decodingMap[match]; });
 }
 
-function parseHTML (html, options) {
-  var stack = [];  // 维护AST节点层级的栈
+function parseHTML(html, options) {
+  var stack = []; // 维护AST节点层级的栈
   var expectHTML = options.expectHTML;
   var isUnaryTag = options.isUnaryTag || no;
   var canBeLeftOpenTag = options.canBeLeftOpenTag || no; // 用来检测一个标签是否是可以省略闭合标签的非自闭合标签
   var index = 0; // 解析游标
   var last, // 存储剩余还未解析的模版字符串
-      lastTag; // 存储位于stack栈顶的元素
+    lastTag; // 存储位于stack栈顶的元素
   while (html) {
     last = html;
     // Make sure we're not in a plaintext content element like script/style
     // 确保即将parse的内容不是在纯文本标签里面（script、style、textarea）
     if (!lastTag || !isPlainTextElement(lastTag)) {
-      var textEnd = html.indexOf('<');
+      var textEnd = html.indexOf("<");
+      // textEnd代表文本的结束位置
       if (textEnd === 0) {
         // Comment: 普通注释
         if (comment.test(html)) {
-          var commentEnd = html.indexOf('-->');
+          var commentEnd = html.indexOf("-->");
 
           if (commentEnd >= 0) {
             // 是否保留注释
             if (options.shouldKeepComment) {
-              options.comment(html.substring(4, commentEnd), index, index + commentEnd + 3);
+              options.comment(
+                html.substring(4, commentEnd), // 注释内容
+                index, // 注释起点
+                index + commentEnd + 3 // 注释结束
+              );
             }
             advance(commentEnd + 3);
-            continue
+            continue;
           }
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
-        // 条件注释
+        // HTML条件注释，比如<!if[IE]><![endif]>
         if (conditionalComment.test(html)) {
-          var conditionalEnd = html.indexOf(']>');
+          var conditionalEnd = html.indexOf("]>");
 
           if (conditionalEnd >= 0) {
             advance(conditionalEnd + 2);
-            continue
+            continue;
           }
         }
 
@@ -321,26 +330,29 @@ function parseHTML (html, options) {
         var doctypeMatch = html.match(doctype);
         if (doctypeMatch) {
           advance(doctypeMatch[0].length);
-          continue
+          continue;
         }
 
-        // End tag: 开始标签
+        // End tag: 结束标签
         var endTagMatch = html.match(endTag);
         if (endTagMatch) {
           var curIndex = index;
+          // 比如当前html为：'</p></div>'
+          // endTagMatch[0]: '</p>'
+          // endTagMatch[1]: 'p'
           advance(endTagMatch[0].length);
           parseEndTag(endTagMatch[1], curIndex, index);
-          continue
+          continue;
         }
 
-        // Start tag: 结束标签
+        // Start tag: 开始标签
         var startTagMatch = parseStartTag();
         if (startTagMatch) {
           handleStartTag(startTagMatch);
           if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) {
             advance(1);
           }
-          continue
+          continue;
         }
       }
       // 文本标签
@@ -354,8 +366,8 @@ function parseHTML (html, options) {
           !conditionalComment.test(rest)
         ) {
           // < in plain text, be forgiving and treat it as text
-          next = rest.indexOf('<', 1);
-          if (next < 0) { break }
+          next = rest.indexOf("<", 1);
+          if (next < 0) { break; }
           textEnd += next;
           rest = html.slice(textEnd);
         }
@@ -378,13 +390,18 @@ function parseHTML (html, options) {
     else {
       var endTagLength = 0;
       var stackedTag = lastTag.toLowerCase();
-      var reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'));
+      var reStackedTag =
+        reCache[stackedTag] ||
+        (reCache[stackedTag] = new RegExp(
+          "([\\s\\S]*?)(</" + stackedTag + "[^>]*>)",
+          "i"
+        ));
       var rest$1 = html.replace(reStackedTag, function (all, text, endTag) {
         endTagLength = endTag.length;
-        if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {
+        if (!isPlainTextElement(stackedTag) && stackedTag !== "noscript") {
           text = text
-            .replace(/<!\--([\s\S]*?)-->/g, '$1') // #7298
-            .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1');
+            .replace(/<!\--([\s\S]*?)-->/g, "$1") // #7298
+            .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, "$1");
         }
         if (shouldIgnoreFirstNewline(stackedTag, text)) {
           text = text.slice(1);
@@ -393,7 +410,7 @@ function parseHTML (html, options) {
         if (options.chars) {
           options.chars(text);
         }
-        return ''
+        return "";
       });
       index += html.length - rest$1.length;
       html = rest$1;
@@ -402,33 +419,47 @@ function parseHTML (html, options) {
     // 将整个字符串作为文本对待
     if (html === last) {
       options.chars && options.chars(html);
-      if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
-        options.warn(("Mal-formatted tag at end of template: \"" + html + "\""), { start: index + html.length });
+      if (
+        process.env.NODE_ENV !== "production" &&
+        !stack.length &&
+        options.warn
+      ) {
+        options.warn(("Mal-formatted tag at end of template: \"" + html + "\""), {
+          start: index + html.length,
+        });
       }
-      break
+      break;
     }
   }
 
   // Clean up any remaining tags
   parseEndTag();
-  // 指针前进
-  function advance (n) {
+  /**
+   * 下标index前进
+   * @param {*} n
+   */
+  function advance(n) {
     index += n;
     html = html.substring(n);
   }
   // 解析开始标签
-  function parseStartTag () {
+  function parseStartTag() {
+    // 比如 '<div id="#app"></div>‘，start[0]: 'div', start[1]: '<div'
     var start = html.match(startTagOpen);
     if (start) {
       var match = {
         tagName: start[1],
         attrs: [],
-        start: index
+        start: index,
       };
       advance(start[0].length);
       var end, attr;
       // 解析标签属性
-      while (!(end = html.match(startTagClose)) && (attr = html.match(dynamicArgAttribute) || html.match(attribute))) {
+      while (
+        !(end = html.match(startTagClose)) &&
+        (attr = html.match(dynamicArgAttribute) || html.match(attribute))
+      ) {
+        // attr: [" id="app"", "id", "=", "app"]
         attr.start = index;
         advance(attr[0].length);
         attr.end = index;
@@ -439,17 +470,17 @@ function parseHTML (html, options) {
         match.unarySlash = end[1];
         advance(end[0].length);
         match.end = index;
-        return match
+        return match;
       }
     }
   }
   // 对parseStartTag函数的解析结果进行下一步处理
-  function handleStartTag (match) {
+  function handleStartTag(match) {
     var tagName = match.tagName;
     var unarySlash = match.unarySlash;
 
     if (expectHTML) {
-      if (lastTag === 'p' && isNonPhrasingTag(tagName)) {
+      if (lastTag === "p" && isNonPhrasingTag(tagName)) {
         parseEndTag(lastTag);
       }
       if (canBeLeftOpenTag(tagName) && lastTag === tagName) {
@@ -463,22 +494,29 @@ function parseHTML (html, options) {
     var attrs = new Array(l);
     for (var i = 0; i < l; i++) {
       var args = match.attrs[i];
-      var value = args[3] || args[4] || args[5] || '';
-      var shouldDecodeNewlines = tagName === 'a' && args[1] === 'href'
-        ? options.shouldDecodeNewlinesForHref
-        : options.shouldDecodeNewlines;
+      var value = args[3] || args[4] || args[5] || "";
+      var shouldDecodeNewlines =
+        tagName === "a" && args[1] === "href"
+          ? options.shouldDecodeNewlinesForHref
+          : options.shouldDecodeNewlines;
       attrs[i] = {
         name: args[1],
-        value: decodeAttr(value, shouldDecodeNewlines)
+        value: decodeAttr(value, shouldDecodeNewlines),
       };
-      if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
+      if (process.env.NODE_ENV !== "production" && options.outputSourceRange) {
         attrs[i].start = args.start + args[0].match(/^\s*/).length;
         attrs[i].end = args.end;
       }
     }
 
     if (!unary) {
-      stack.push({ tag: tagName, lowerCasedTag: tagName.toLowerCase(), attrs: attrs, start: match.start, end: match.end });
+      stack.push({
+        tag: tagName,
+        lowerCasedTag: tagName.toLowerCase(),
+        attrs: attrs,
+        start: match.start,
+        end: match.end,
+      });
       lastTag = tagName;
     }
 
@@ -492,7 +530,7 @@ function parseHTML (html, options) {
    * 第二种是只传递tagName
    * 第三种是三个参数都不传递，用于处理栈中剩余未处理的标签
    */
-  function parseEndTag (tagName, start, end) {
+  function parseEndTag(tagName, start, end) {
     var pos, lowerCasedTagName;
     if (start == null) { start = index; }
     if (end == null) { end = index; }
@@ -503,7 +541,7 @@ function parseHTML (html, options) {
       lowerCasedTagName = tagName.toLowerCase();
       for (pos = stack.length - 1; pos >= 0; pos--) {
         if (stack[pos].lowerCasedTag === lowerCasedTagName) {
-          break
+          break;
         }
       }
     } else {
@@ -515,14 +553,15 @@ function parseHTML (html, options) {
       // Close all the open elements, up the stack
       // 从栈顶往前遍历，如果有其他标签，则表明这个标签没有被正确闭合，直接打印警告
       for (var i = stack.length - 1; i >= pos; i--) {
-        if (process.env.NODE_ENV !== 'production' &&
+        if (
+          process.env.NODE_ENV !== "production" &&
           (i > pos || !tagName) &&
           options.warn
         ) {
-          options.warn(
-            ("tag <" + (stack[i].tag) + "> has no matching end tag."),
-            { start: stack[i].start, end: stack[i].end }
-          );
+          options.warn(("tag <" + (stack[i].tag) + "> has no matching end tag."), {
+            start: stack[i].start,
+            end: stack[i].end,
+          });
         }
         // 为了程序的正确性，自动将其闭合
         if (options.end) {
@@ -540,13 +579,13 @@ function parseHTML (html, options) {
     // 浏览器会自动把</br>标签解析为正常的 <br>标签，而对于</p>浏览器则自动将其补全为<p></p>，
     // 所以Vue为了与浏览器对这两个标签的行为保持一致，故对这两个便签单独判断处理，
     // 是否为br标签
-    else if (lowerCasedTagName === 'br') {
+    else if (lowerCasedTagName === "br") {
       if (options.start) {
         options.start(tagName, [], true, start, end);
       }
     }
-    // 是否为pa标签
-    else if (lowerCasedTagName === 'p') {
+    // 是否为p标签
+    else if (lowerCasedTagName === "p") {
       if (options.start) {
         options.start(tagName, [], false, start, end);
       }
@@ -757,31 +796,26 @@ var hasSymbol =
 /* istanbul ignore if */ // $flow-disable-line
 if (typeof Set !== 'undefined' && isNative(Set)) ;
 
-var ASSET_TYPES = [
-  'component',
-  'directive',
-  'filter'
-];
-
+var ASSET_TYPES = ["component", "directive", "filter"];
+// 生命周期钩子
 var LIFECYCLE_HOOKS = [
-  'beforeCreate',
-  'created',
-  'beforeMount',
-  'mounted',
-  'beforeUpdate',
-  'updated',
-  'beforeDestroy',
-  'destroyed',
-  'activated',
-  'deactivated',
-  'errorCaptured',
-  'serverPrefetch'
-];
+  "beforeCreate",
+  "created",
+  "beforeMount",
+  "mounted",
+  "beforeUpdate",
+  "updated",
+  "beforeDestroy",
+  "destroyed",
+  "activated",
+  "deactivated",
+  "errorCaptured",
+  "serverPrefetch" ];
 
 /*  */
 
 
-
+// Vue.config
 var config = ({
   /**
    * Option merge strategies (used in core/util/options)
@@ -797,12 +831,12 @@ var config = ({
   /**
    * Show production mode tip message on boot?
    */
-  productionTip: process.env.NODE_ENV !== 'production',
+  productionTip: process.env.NODE_ENV !== "production",
 
   /**
    * Whether to enable devtools
    */
-  devtools: process.env.NODE_ENV !== 'production',
+  devtools: process.env.NODE_ENV !== "production",
 
   /**
    * Whether to record perf
@@ -873,7 +907,7 @@ var config = ({
   /**
    * Exposed for legacy reasons
    */
-  _lifecycleHooks: LIFECYCLE_HOOKS
+  _lifecycleHooks: LIFECYCLE_HOOKS,
 });
 
 /*  */
@@ -2435,10 +2469,10 @@ var platformMustUseProp;
 var platformGetTagNamespace;
 var maybeComponent;
 
-function createASTElement (
+function createASTElement(
   tag,
   attrs,
-  parent // 
+  parent //
 ) {
   return {
     type: 1,
@@ -2447,14 +2481,14 @@ function createASTElement (
     attrsMap: makeAttrsMap(attrs),
     rawAttrsMap: {},
     parent: parent,
-    children: []
-  }
+    children: [],
+  };
 }
 
 /**
  * Convert HTML string to AST.
  */
-function parse (
+function parse(
   template,
   options
 ) {
@@ -2465,14 +2499,14 @@ function parse (
   platformGetTagNamespace = options.getTagNamespace || no;
   var isReservedTag = options.isReservedTag || no;
   maybeComponent = function (el) { return !!(
-    el.component ||
-    el.attrsMap[':is'] ||
-    el.attrsMap['v-bind:is'] ||
-    !(el.attrsMap.is ? isReservedTag(el.attrsMap.is) : isReservedTag(el.tag))
-  ); };
-  transforms = pluckModuleFunction(options.modules, 'transformNode');
-  preTransforms = pluckModuleFunction(options.modules, 'preTransformNode');
-  postTransforms = pluckModuleFunction(options.modules, 'postTransformNode');
+      el.component ||
+      el.attrsMap[":is"] ||
+      el.attrsMap["v-bind:is"] ||
+      !(el.attrsMap.is ? isReservedTag(el.attrsMap.is) : isReservedTag(el.tag))
+    ); };
+  transforms = pluckModuleFunction(options.modules, "transformNode");
+  preTransforms = pluckModuleFunction(options.modules, "preTransformNode");
+  postTransforms = pluckModuleFunction(options.modules, "postTransformNode");
 
   delimiters = options.delimiters;
 
@@ -2485,14 +2519,14 @@ function parse (
   var inPre = false;
   var warned = false;
 
-  function warnOnce (msg, range) {
+  function warnOnce(msg, range) {
     if (!warned) {
       warned = true;
       warn$1(msg, range);
     }
   }
 
-  function closeElement (element) {
+  function closeElement(element) {
     trimEndingWhitespace(element);
     if (!inVPre && !element.processed) {
       element = processElement(element, options);
@@ -2501,18 +2535,18 @@ function parse (
     if (!stack.length && element !== root) {
       // allow root elements with v-if, v-else-if and v-else
       if (root.if && (element.elseif || element.else)) {
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== "production") {
           checkRootConstraints(element);
         }
         addIfCondition(root, {
           exp: element.elseif,
-          block: element
+          block: element,
         });
-      } else if (process.env.NODE_ENV !== 'production') {
+      } else if (process.env.NODE_ENV !== "production") {
         warnOnce(
           "Component template should contain exactly one root element. " +
-          "If you are using v-if on multiple elements, " +
-          "use v-else-if to chain them instead.",
+            "If you are using v-if on multiple elements, " +
+            "use v-else-if to chain them instead.",
           { start: element.start }
         );
       }
@@ -2525,8 +2559,10 @@ function parse (
           // scoped slot
           // keep it in the children list so that v-else(-if) conditions can
           // find it as the prev node.
-          var name = element.slotTarget || '"default"'
-          ;(currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element;
+          var name = element.slotTarget || '"default"';
+          (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[
+            name
+          ] = element;
         }
         currentParent.children.push(element);
         element.parent = currentParent;
@@ -2552,33 +2588,33 @@ function parse (
     }
   }
 
-  function trimEndingWhitespace (el) {
+  function trimEndingWhitespace(el) {
     // remove trailing whitespace node
     if (!inPre) {
       var lastNode;
       while (
         (lastNode = el.children[el.children.length - 1]) &&
         lastNode.type === 3 &&
-        lastNode.text === ' '
+        lastNode.text === " "
       ) {
         el.children.pop();
       }
     }
   }
 
-  function checkRootConstraints (el) {
-    if (el.tag === 'slot' || el.tag === 'template') {
+  function checkRootConstraints(el) {
+    if (el.tag === "slot" || el.tag === "template") {
       warnOnce(
         "Cannot use <" + (el.tag) + "> as component root element because it may " +
-        'contain multiple nodes.',
+          "contain multiple nodes.",
         { start: el.start }
       );
     }
-    if (el.attrsMap.hasOwnProperty('v-for')) {
+    if (el.attrsMap.hasOwnProperty("v-for")) {
       warnOnce(
-        'Cannot use v-for on stateful component root element because ' +
-        'it renders multiple elements.',
-        el.rawAttrsMap['v-for']
+        "Cannot use v-for on stateful component root element because " +
+          "it renders multiple elements.",
+        el.rawAttrsMap["v-for"]
       );
     }
   }
@@ -2596,14 +2632,15 @@ function parse (
     // tag: 标签名
     // attrs: 标签属性
     // unary: 标签是否闭合
-    start: function start (tag, attrs, unary, start$1, end) {
+    start: function start(tag, attrs, unary, start$1, end) {
       // check namespace.
       // inherit parent ns if there is one
-      var ns = (currentParent && currentParent.ns) || platformGetTagNamespace(tag);
+      var ns =
+        (currentParent && currentParent.ns) || platformGetTagNamespace(tag);
 
       // handle IE svg bug
       /* istanbul ignore if */
-      if (isIE && ns === 'svg') {
+      if (isIE && ns === "svg") {
         attrs = guardIESVGBug(attrs);
       }
 
@@ -2612,23 +2649,23 @@ function parse (
         element.ns = ns;
       }
 
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== "production") {
         if (options.outputSourceRange) {
           element.start = start$1;
           element.end = end;
           element.rawAttrsMap = element.attrsList.reduce(function (cumulated, attr) {
             cumulated[attr.name] = attr;
-            return cumulated
+            return cumulated;
           }, {});
         }
         attrs.forEach(function (attr) {
           if (invalidAttributeRE.test(attr.name)) {
             warn$1(
               "Invalid dynamic argument expression: attribute names cannot contain " +
-              "spaces, quotes, <, >, / or =.",
+                "spaces, quotes, <, >, / or =.",
               {
                 start: attr.start + attr.name.indexOf("["),
-                end: attr.start + attr.name.length
+                end: attr.start + attr.name.length,
               }
             );
           }
@@ -2637,12 +2674,14 @@ function parse (
 
       if (isForbiddenTag(element) && !isServerRendering()) {
         element.forbidden = true;
-        process.env.NODE_ENV !== 'production' && warn$1(
-          'Templates should only be responsible for mapping the state to the ' +
-          'UI. Avoid placing tags with side-effects in your templates, such as ' +
-          "<" + tag + ">" + ', as they will not be parsed.',
-          { start: element.start }
-        );
+        process.env.NODE_ENV !== "production" &&
+          warn$1(
+            "Templates should only be responsible for mapping the state to the " +
+              "UI. Avoid placing tags with side-effects in your templates, such as " +
+              "<" + tag + ">" +
+              ", as they will not be parsed.",
+            { start: element.start }
+          );
       }
 
       // apply pre-transforms
@@ -2672,7 +2711,7 @@ function parse (
 
       if (!root) {
         root = element;
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== "production") {
           checkRootConstraints(root);
         }
       }
@@ -2685,70 +2724,70 @@ function parse (
       }
     },
     // 当解析到结束标签时，调用该函数
-    end: function end (tag, start, end$1) {
+    end: function end(tag, start, end$1) {
       var element = stack[stack.length - 1];
       // pop stack
       stack.length -= 1;
       currentParent = stack[stack.length - 1];
-      if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
+      if (process.env.NODE_ENV !== "production" && options.outputSourceRange) {
         element.end = end$1;
       }
       closeElement(element);
     },
     // 当解析到文本时，调用该函数
     // 根据文本是否包含变量再细化为创建含有变量的AST节点和不包含变量的AST节点
-    chars: function chars (text, start, end) {
+    chars: function chars(text, start, end) {
       // 打印警告
       if (!currentParent) {
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== "production") {
           if (text === template) {
             warnOnce(
-              'Component template requires a root element, rather than just text.',
+              "Component template requires a root element, rather than just text.",
               { start: start }
             );
           } else if ((text = text.trim())) {
-            warnOnce(
-              ("text \"" + text + "\" outside root element will be ignored."),
-              { start: start }
-            );
+            warnOnce(("text \"" + text + "\" outside root element will be ignored."), {
+              start: start,
+            });
           }
         }
-        return
+        return;
       }
       // IE textarea placeholder bug
       /* istanbul ignore if */
-      if (isIE &&
-        currentParent.tag === 'textarea' &&
+      if (
+        isIE &&
+        currentParent.tag === "textarea" &&
         currentParent.attrsMap.placeholder === text
       ) {
-        return
+        return;
       }
       var children = currentParent.children;
       if (inPre || text.trim()) {
         text = isTextTag(currentParent) ? text : decodeHTMLCached(text);
       } else if (!children.length) {
         // remove the whitespace-only node right after an opening tag
-        text = '';
+        text = "";
       } else if (whitespaceOption) {
-        if (whitespaceOption === 'condense') {
+        if (whitespaceOption === "condense") {
           // in condense mode, remove the whitespace node if it contains
           // line break, otherwise condense to a single space
-          text = lineBreakRE.test(text) ? '' : ' ';
+          text = lineBreakRE.test(text) ? "" : " ";
         } else {
-          text = ' ';
+          text = " ";
         }
       } else {
-        text = preserveWhitespace ? ' ' : '';
+        text = preserveWhitespace ? " " : "";
       }
       if (text) {
-        if (!inPre && whitespaceOption === 'condense') {
+        if (!inPre && whitespaceOption === "condense") {
           // condense consecutive whitespaces into single space
-          text = text.replace(whitespaceRE, ' ');
+          text = text.replace(whitespaceRE, " ");
         }
         var res;
         var child;
         // 包含变量的文本
-        if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
+        if (!inVPre && text !== " " && (res = parseText(text, delimiters))) {
           /**
            * let res = parseText(text)
            * res = {
@@ -2766,18 +2805,25 @@ function parse (
             type: 2,
             expression: res.expression,
             tokens: res.tokens,
-            text: text
+            text: text,
           };
         }
         // 不包含变量的文本
-        else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
+        else if (
+          text !== " " ||
+          !children.length ||
+          children[children.length - 1].text !== " "
+        ) {
           child = {
             type: 3,
-            text: text
+            text: text,
           };
         }
         if (child) {
-          if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
+          if (
+            process.env.NODE_ENV !== "production" &&
+            options.outputSourceRange
+          ) {
             child.start = start;
             child.end = end;
           }
@@ -2786,41 +2832,45 @@ function parse (
       }
     },
     // 当解析到注释时，调用该函数
-    comment: function comment (text, start, end) {
+    comment: function comment(text, start, end) {
       // adding anything as a sibling to the root node is forbidden
       // comments should still be allowed, but ignored
       if (currentParent) {
+        // comment的AST
         var child = {
           type: 3,
           text: text,
-          isComment: true
+          isComment: true,
         };
-        if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
+        if (
+          process.env.NODE_ENV !== "production" &&
+          options.outputSourceRange
+        ) {
           child.start = start;
           child.end = end;
         }
         currentParent.children.push(child);
       }
-    }
+    },
   });
-  return root
+  return root;
 }
 
-function processPre (el) {
-  if (getAndRemoveAttr(el, 'v-pre') != null) {
+function processPre(el) {
+  if (getAndRemoveAttr(el, "v-pre") != null) {
     el.pre = true;
   }
 }
 
-function processRawAttrs (el) {
+function processRawAttrs(el) {
   var list = el.attrsList;
   var len = list.length;
   if (len) {
-    var attrs = el.attrs = new Array(len);
+    var attrs = (el.attrs = new Array(len));
     for (var i = 0; i < len; i++) {
       attrs[i] = {
         name: list[i].name,
-        value: JSON.stringify(list[i].value)
+        value: JSON.stringify(list[i].value),
       };
       if (list[i].start != null) {
         attrs[i].start = list[i].start;
@@ -2833,19 +2883,13 @@ function processRawAttrs (el) {
   }
 }
 
-function processElement (
-  element,
-  options
-) {
+function processElement(element, options) {
   processKey(element);
 
   // determine whether this is a plain element after
   // removing structural attributes
-  element.plain = (
-    !element.key &&
-    !element.scopedSlots &&
-    !element.attrsList.length
-  );
+  element.plain =
+    !element.key && !element.scopedSlots && !element.attrsList.length;
 
   processRef(element);
   processSlotContent(element);
@@ -2855,27 +2899,32 @@ function processElement (
     element = transforms[i](element, options) || element;
   }
   processAttrs(element);
-  return element
+  return element;
 }
 
-function processKey (el) {
-  var exp = getBindingAttr(el, 'key');
+function processKey(el) {
+  var exp = getBindingAttr(el, "key");
   if (exp) {
-    if (process.env.NODE_ENV !== 'production') {
-      if (el.tag === 'template') {
+    if (process.env.NODE_ENV !== "production") {
+      if (el.tag === "template") {
         warn$1(
           "<template> cannot be keyed. Place the key on real elements instead.",
-          getRawBindingAttr(el, 'key')
+          getRawBindingAttr(el, "key")
         );
       }
       if (el.for) {
         var iterator = el.iterator2 || el.iterator1;
         var parent = el.parent;
-        if (iterator && iterator === exp && parent && parent.tag === 'transition-group') {
+        if (
+          iterator &&
+          iterator === exp &&
+          parent &&
+          parent.tag === "transition-group"
+        ) {
           warn$1(
             "Do not use v-for index as key on <transition-group> children, " +
-            "this is the same as not using keys.",
-            getRawBindingAttr(el, 'key'),
+              "this is the same as not using keys.",
+            getRawBindingAttr(el, "key"),
             true /* tip */
           );
         }
@@ -2885,40 +2934,37 @@ function processKey (el) {
   }
 }
 
-function processRef (el) {
-  var ref = getBindingAttr(el, 'ref');
+function processRef(el) {
+  var ref = getBindingAttr(el, "ref");
   if (ref) {
     el.ref = ref;
     el.refInFor = checkInFor(el);
   }
 }
 
-function processFor (el) {
+function processFor(el) {
   var exp;
-  if ((exp = getAndRemoveAttr(el, 'v-for'))) {
+  if ((exp = getAndRemoveAttr(el, "v-for"))) {
     var res = parseFor(exp);
     if (res) {
       extend(el, res);
-    } else if (process.env.NODE_ENV !== 'production') {
-      warn$1(
-        ("Invalid v-for expression: " + exp),
-        el.rawAttrsMap['v-for']
-      );
+    } else if (process.env.NODE_ENV !== "production") {
+      warn$1(("Invalid v-for expression: " + exp), el.rawAttrsMap["v-for"]);
     }
   }
 }
 
 
 
-function parseFor (exp) {
+function parseFor(exp) {
   var inMatch = exp.match(forAliasRE);
-  if (!inMatch) { return }
+  if (!inMatch) { return; }
   var res = {};
   res.for = inMatch[2].trim();
-  var alias = inMatch[1].trim().replace(stripParensRE, '');
+  var alias = inMatch[1].trim().replace(stripParensRE, "");
   var iteratorMatch = alias.match(forIteratorRE);
   if (iteratorMatch) {
-    res.alias = alias.replace(forIteratorRE, '').trim();
+    res.alias = alias.replace(forIteratorRE, "").trim();
     res.iterator1 = iteratorMatch[1].trim();
     if (iteratorMatch[2]) {
       res.iterator2 = iteratorMatch[2].trim();
@@ -2926,54 +2972,54 @@ function parseFor (exp) {
   } else {
     res.alias = alias;
   }
-  return res
+  return res;
 }
 
-function processIf (el) {
-  var exp = getAndRemoveAttr(el, 'v-if');
+function processIf(el) {
+  var exp = getAndRemoveAttr(el, "v-if");
   if (exp) {
     el.if = exp;
     addIfCondition(el, {
       exp: exp,
-      block: el
+      block: el,
     });
   } else {
-    if (getAndRemoveAttr(el, 'v-else') != null) {
+    if (getAndRemoveAttr(el, "v-else") != null) {
       el.else = true;
     }
-    var elseif = getAndRemoveAttr(el, 'v-else-if');
+    var elseif = getAndRemoveAttr(el, "v-else-if");
     if (elseif) {
       el.elseif = elseif;
     }
   }
 }
 
-function processIfConditions (el, parent) {
+function processIfConditions(el, parent) {
   var prev = findPrevElement(parent.children);
   if (prev && prev.if) {
     addIfCondition(prev, {
       exp: el.elseif,
-      block: el
+      block: el,
     });
-  } else if (process.env.NODE_ENV !== 'production') {
+  } else if (process.env.NODE_ENV !== "production") {
     warn$1(
-      "v-" + (el.elseif ? ('else-if="' + el.elseif + '"') : 'else') + " " +
-      "used on element <" + (el.tag) + "> without corresponding v-if.",
-      el.rawAttrsMap[el.elseif ? 'v-else-if' : 'v-else']
+      "v-" + (el.elseif ? 'else-if="' + el.elseif + '"' : "else") + " " +
+        "used on element <" + (el.tag) + "> without corresponding v-if.",
+      el.rawAttrsMap[el.elseif ? "v-else-if" : "v-else"]
     );
   }
 }
 
-function findPrevElement (children) {
+function findPrevElement(children) {
   var i = children.length;
   while (i--) {
     if (children[i].type === 1) {
-      return children[i]
+      return children[i];
     } else {
-      if (process.env.NODE_ENV !== 'production' && children[i].text !== ' ') {
+      if (process.env.NODE_ENV !== "production" && children[i].text !== " ") {
         warn$1(
           "text \"" + (children[i].text.trim()) + "\" between v-if and v-else(-if) " +
-          "will be ignored.",
+            "will be ignored.",
           children[i]
         );
       }
@@ -2982,15 +3028,15 @@ function findPrevElement (children) {
   }
 }
 
-function addIfCondition (el, condition) {
+function addIfCondition(el, condition) {
   if (!el.ifConditions) {
     el.ifConditions = [];
   }
   el.ifConditions.push(condition);
 }
 
-function processOnce (el) {
-  var once = getAndRemoveAttr(el, 'v-once');
+function processOnce(el) {
+  var once = getAndRemoveAttr(el, "v-once");
   if (once != null) {
     el.once = true;
   }
@@ -2998,30 +3044,30 @@ function processOnce (el) {
 
 // handle content being passed to a component as slot,
 // e.g. <template slot="xxx">, <div slot-scope="xxx">
-function processSlotContent (el) {
+function processSlotContent(el) {
   var slotScope;
-  if (el.tag === 'template') {
-    slotScope = getAndRemoveAttr(el, 'scope');
+  if (el.tag === "template") {
+    slotScope = getAndRemoveAttr(el, "scope");
     /* istanbul ignore if */
-    if (process.env.NODE_ENV !== 'production' && slotScope) {
+    if (process.env.NODE_ENV !== "production" && slotScope) {
       warn$1(
         "the \"scope\" attribute for scoped slots have been deprecated and " +
-        "replaced by \"slot-scope\" since 2.5. The new \"slot-scope\" attribute " +
-        "can also be used on plain elements in addition to <template> to " +
-        "denote scoped slots.",
-        el.rawAttrsMap['scope'],
+          "replaced by \"slot-scope\" since 2.5. The new \"slot-scope\" attribute " +
+          "can also be used on plain elements in addition to <template> to " +
+          "denote scoped slots.",
+        el.rawAttrsMap["scope"],
         true
       );
     }
-    el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope');
-  } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) {
+    el.slotScope = slotScope || getAndRemoveAttr(el, "slot-scope");
+  } else if ((slotScope = getAndRemoveAttr(el, "slot-scope"))) {
     /* istanbul ignore if */
-    if (process.env.NODE_ENV !== 'production' && el.attrsMap['v-for']) {
+    if (process.env.NODE_ENV !== "production" && el.attrsMap["v-for"]) {
       warn$1(
         "Ambiguous combined usage of slot-scope and v-for on <" + (el.tag) + "> " +
-        "(v-for takes higher priority). Use a wrapper <template> for the " +
-        "scoped slot to make it clearer.",
-        el.rawAttrsMap['slot-scope'],
+          "(v-for takes higher priority). Use a wrapper <template> for the " +
+          "scoped slot to make it clearer.",
+        el.rawAttrsMap["slot-scope"],
         true
       );
     }
@@ -3029,34 +3075,33 @@ function processSlotContent (el) {
   }
 
   // slot="xxx"
-  var slotTarget = getBindingAttr(el, 'slot');
+  var slotTarget = getBindingAttr(el, "slot");
   if (slotTarget) {
     el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget;
-    el.slotTargetDynamic = !!(el.attrsMap[':slot'] || el.attrsMap['v-bind:slot']);
+    el.slotTargetDynamic = !!(
+      el.attrsMap[":slot"] || el.attrsMap["v-bind:slot"]
+    );
     // preserve slot as an attribute for native shadow DOM compat
     // only for non-scoped slots.
-    if (el.tag !== 'template' && !el.slotScope) {
-      addAttr(el, 'slot', slotTarget, getRawBindingAttr(el, 'slot'));
+    if (el.tag !== "template" && !el.slotScope) {
+      addAttr(el, "slot", slotTarget, getRawBindingAttr(el, "slot"));
     }
   }
 
   // 2.6 v-slot syntax
   {
-    if (el.tag === 'template') {
+    if (el.tag === "template") {
       // v-slot on <template>
       var slotBinding = getAndRemoveAttrByRegex(el, slotRE);
       if (slotBinding) {
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== "production") {
           if (el.slotTarget || el.slotScope) {
-            warn$1(
-              "Unexpected mixed usage of different slot syntaxes.",
-              el
-            );
+            warn$1("Unexpected mixed usage of different slot syntaxes.", el);
           }
           if (el.parent && !maybeComponent(el.parent)) {
             warn$1(
               "<template v-slot> can only appear at the root level inside " +
-              "the receiving component",
+                "the receiving component",
               el
             );
           }
@@ -3072,7 +3117,7 @@ function processSlotContent (el) {
       // v-slot on component, denotes default slot
       var slotBinding$1 = getAndRemoveAttrByRegex(el, slotRE);
       if (slotBinding$1) {
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== "production") {
           if (!maybeComponent(el)) {
             warn$1(
               "v-slot can only be used on components or <template>.",
@@ -3080,15 +3125,12 @@ function processSlotContent (el) {
             );
           }
           if (el.slotScope || el.slotTarget) {
-            warn$1(
-              "Unexpected mixed usage of different slot syntaxes.",
-              el
-            );
+            warn$1("Unexpected mixed usage of different slot syntaxes.", el);
           }
           if (el.scopedSlots) {
             warn$1(
               "To avoid scope ambiguity, the default slot should also use " +
-              "<template> syntax when there are other named slots.",
+                "<template> syntax when there are other named slots.",
               slotBinding$1
             );
           }
@@ -3098,13 +3140,17 @@ function processSlotContent (el) {
         var ref$1 = getSlotName(slotBinding$1);
         var name$1 = ref$1.name;
         var dynamic$1 = ref$1.dynamic;
-        var slotContainer = slots[name$1] = createASTElement('template', [], el);
+        var slotContainer = (slots[name$1] = createASTElement(
+          "template",
+          [],
+          el
+        ));
         slotContainer.slotTarget = name$1;
         slotContainer.slotTargetDynamic = dynamic$1;
         slotContainer.children = el.children.filter(function (c) {
           if (!c.slotScope) {
             c.parent = slotContainer;
-            return true
+            return true;
           }
         });
         slotContainer.slotScope = slotBinding$1.value || emptySlotScopeToken;
@@ -3117,51 +3163,48 @@ function processSlotContent (el) {
   }
 }
 
-function getSlotName (binding) {
-  var name = binding.name.replace(slotRE, '');
+function getSlotName(binding) {
+  var name = binding.name.replace(slotRE, "");
   if (!name) {
-    if (binding.name[0] !== '#') {
-      name = 'default';
-    } else if (process.env.NODE_ENV !== 'production') {
-      warn$1(
-        "v-slot shorthand syntax requires a slot name.",
-        binding
-      );
+    if (binding.name[0] !== "#") {
+      name = "default";
+    } else if (process.env.NODE_ENV !== "production") {
+      warn$1("v-slot shorthand syntax requires a slot name.", binding);
     }
   }
   return dynamicArgRE.test(name)
-    // dynamic [name]
-    ? { name: name.slice(1, -1), dynamic: true }
-    // static name
-    : { name: ("\"" + name + "\""), dynamic: false }
+    ? // dynamic [name]
+      { name: name.slice(1, -1), dynamic: true }
+    : // static name
+      { name: ("\"" + name + "\""), dynamic: false };
 }
 
 // handle <slot/> outlets
-function processSlotOutlet (el) {
-  if (el.tag === 'slot') {
-    el.slotName = getBindingAttr(el, 'name');
-    if (process.env.NODE_ENV !== 'production' && el.key) {
+function processSlotOutlet(el) {
+  if (el.tag === "slot") {
+    el.slotName = getBindingAttr(el, "name");
+    if (process.env.NODE_ENV !== "production" && el.key) {
       warn$1(
         "`key` does not work on <slot> because slots are abstract outlets " +
-        "and can possibly expand into multiple elements. " +
-        "Use the key on a wrapping element instead.",
-        getRawBindingAttr(el, 'key')
+          "and can possibly expand into multiple elements. " +
+          "Use the key on a wrapping element instead.",
+        getRawBindingAttr(el, "key")
       );
     }
   }
 }
 
-function processComponent (el) {
+function processComponent(el) {
   var binding;
-  if ((binding = getBindingAttr(el, 'is'))) {
+  if ((binding = getBindingAttr(el, "is"))) {
     el.component = binding;
   }
-  if (getAndRemoveAttr(el, 'inline-template') != null) {
+  if (getAndRemoveAttr(el, "inline-template") != null) {
     el.inlineTemplate = true;
   }
 }
 
-function processAttrs (el) {
+function processAttrs(el) {
   var list = el.attrsList;
   var i, l, name, rawName, value, modifiers, syncGen, isDynamic;
   for (i = 0, l = list.length; i < l; i++) {
@@ -3172,21 +3215,22 @@ function processAttrs (el) {
       // mark element as dynamic
       el.hasBindings = true;
       // modifiers
-      modifiers = parseModifiers(name.replace(dirRE, ''));
+      modifiers = parseModifiers(name.replace(dirRE, ""));
       // support .foo shorthand syntax for the .prop modifier
       if (modifiers) {
-        name = name.replace(modifierRE, '');
+        name = name.replace(modifierRE, "");
       }
       // v-bind
-      if (bindRE.test(name)) { // v-bind
-        name = name.replace(bindRE, '');
+      if (bindRE.test(name)) {
+        // v-bind
+        name = name.replace(bindRE, "");
         value = parseFilters(value);
         isDynamic = dynamicArgRE.test(name);
         if (isDynamic) {
           name = name.slice(1, -1);
         }
         if (
-          process.env.NODE_ENV !== 'production' &&
+          process.env.NODE_ENV !== "production" &&
           value.trim().length === 0
         ) {
           warn$1(
@@ -3196,7 +3240,7 @@ function processAttrs (el) {
         if (modifiers) {
           if (modifiers.prop && !isDynamic) {
             name = camelize(name);
-            if (name === 'innerHtml') { name = 'innerHTML'; }
+            if (name === "innerHtml") { name = "innerHTML"; }
           }
           if (modifiers.camel && !isDynamic) {
             name = camelize(name);
@@ -3239,17 +3283,19 @@ function processAttrs (el) {
             }
           }
         }
-        if ((modifiers && modifiers.prop) || (
-          !el.component && platformMustUseProp(el.tag, el.attrsMap.type, name)
-        )) {
+        if (
+          (modifiers && modifiers.prop) ||
+          (!el.component && platformMustUseProp(el.tag, el.attrsMap.type, name))
+        ) {
           addProp(el, name, value, list[i], isDynamic);
         } else {
           addAttr(el, name, value, list[i], isDynamic);
         }
       }
       // v-on
-      else if (onRE.test(name)) { // v-on
-        name = name.replace(onRE, '');
+      else if (onRE.test(name)) {
+        // v-on
+        name = name.replace(onRE, "");
         isDynamic = dynamicArgRE.test(name);
         if (isDynamic) {
           name = name.slice(1, -1);
@@ -3257,8 +3303,9 @@ function processAttrs (el) {
         addHandler(el, name, value, modifiers, false, warn$1, list[i], isDynamic);
       }
       // 普通
-      else { // normal directives
-        name = name.replace(dirRE, '');
+      else {
+        // normal directives
+        name = name.replace(dirRE, "");
         // parse arg
         var argMatch = name.match(argRE);
         var arg = argMatch && argMatch[1];
@@ -3270,8 +3317,17 @@ function processAttrs (el) {
             isDynamic = true;
           }
         }
-        addDirective(el, name, rawName, value, arg, isDynamic, modifiers, list[i]);
-        if (process.env.NODE_ENV !== 'production' && name === 'model') {
+        addDirective(
+          el,
+          name,
+          rawName,
+          value,
+          arg,
+          isDynamic,
+          modifiers,
+          list[i]
+        );
+        if (process.env.NODE_ENV !== "production" && name === "model") {
           checkForAliasModel(el, value);
         }
       }
@@ -3279,14 +3335,14 @@ function processAttrs (el) {
     // 非Vue内部指令
     else {
       // literal attribute
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== "production") {
         var res = parseText(value, delimiters);
         if (res) {
           warn$1(
             name + "=\"" + value + "\": " +
-            'Interpolation inside attributes has been removed. ' +
-            'Use v-bind or the colon shorthand instead. For example, ' +
-            'instead of <div id="{{ val }}">, use <div :id="val">.',
+              "Interpolation inside attributes has been removed. " +
+              "Use v-bind or the colon shorthand instead. For example, " +
+              'instead of <div id="{{ val }}">, use <div :id="val">.',
             list[i]
           );
         }
@@ -3294,91 +3350,95 @@ function processAttrs (el) {
       addAttr(el, name, JSON.stringify(value), list[i]);
       // #6887 firefox doesn't update muted state if set via attribute
       // even immediately after element creation
-      if (!el.component &&
-          name === 'muted' &&
-          platformMustUseProp(el.tag, el.attrsMap.type, name)) {
-        addProp(el, name, 'true', list[i]);
+      if (
+        !el.component &&
+        name === "muted" &&
+        platformMustUseProp(el.tag, el.attrsMap.type, name)
+      ) {
+        addProp(el, name, "true", list[i]);
       }
     }
   }
 }
 
-function checkInFor (el) {
+function checkInFor(el) {
   var parent = el;
   while (parent) {
     if (parent.for !== undefined) {
-      return true
+      return true;
     }
     parent = parent.parent;
   }
-  return false
+  return false;
 }
 
-function parseModifiers (name) {
+function parseModifiers(name) {
   var match = name.match(modifierRE);
   if (match) {
     var ret = {};
-    match.forEach(function (m) { ret[m.slice(1)] = true; });
-    return ret
+    match.forEach(function (m) {
+      ret[m.slice(1)] = true;
+    });
+    return ret;
   }
 }
 
-function makeAttrsMap (attrs) {
+function makeAttrsMap(attrs) {
   var map = {};
   for (var i = 0, l = attrs.length; i < l; i++) {
     if (
-      process.env.NODE_ENV !== 'production' &&
-      map[attrs[i].name] && !isIE && !isEdge
+      process.env.NODE_ENV !== "production" &&
+      map[attrs[i].name] &&
+      !isIE &&
+      !isEdge
     ) {
-      warn$1('duplicate attribute: ' + attrs[i].name, attrs[i]);
+      warn$1("duplicate attribute: " + attrs[i].name, attrs[i]);
     }
     map[attrs[i].name] = attrs[i].value;
   }
-  return map
+  return map;
 }
 
 // for script (e.g. type="x/template") or style, do not decode content
-function isTextTag (el) {
-  return el.tag === 'script' || el.tag === 'style'
+function isTextTag(el) {
+  return el.tag === "script" || el.tag === "style";
 }
 
-function isForbiddenTag (el) {
+function isForbiddenTag(el) {
   return (
-    el.tag === 'style' ||
-    (el.tag === 'script' && (
-      !el.attrsMap.type ||
-      el.attrsMap.type === 'text/javascript'
-    ))
-  )
+    el.tag === "style" ||
+    (el.tag === "script" &&
+      (!el.attrsMap.type || el.attrsMap.type === "text/javascript"))
+  );
 }
 
 var ieNSBug = /^xmlns:NS\d+/;
 var ieNSPrefix = /^NS\d+:/;
 
 /* istanbul ignore next */
-function guardIESVGBug (attrs) {
+function guardIESVGBug(attrs) {
   var res = [];
   for (var i = 0; i < attrs.length; i++) {
     var attr = attrs[i];
     if (!ieNSBug.test(attr.name)) {
-      attr.name = attr.name.replace(ieNSPrefix, '');
+      attr.name = attr.name.replace(ieNSPrefix, "");
       res.push(attr);
     }
   }
-  return res
+  return res;
 }
 
-function checkForAliasModel (el, value) {
+function checkForAliasModel(el, value) {
   var _el = el;
   while (_el) {
     if (_el.for && _el.alias === value) {
       warn$1(
         "<" + (el.tag) + " v-model=\"" + value + "\">: " +
-        "You are binding v-model directly to a v-for iteration alias. " +
-        "This will not be able to modify the v-for source array because " +
-        "writing to the alias is like modifying a function local variable. " +
-        "Consider using an array of objects and use v-model on an object property instead.",
-        el.rawAttrsMap['v-model']
+          "You are binding v-model directly to a v-for iteration alias. " +
+          "This will not be able to modify the v-for source array because " +
+          "writing to the alias is like modifying a function local variable. " +
+          "Consider using an array of objects and use v-model on an object property instead.",
+        el.rawAttrsMap["v-model"]
       );
     }
     _el = _el.parent;
@@ -4927,7 +4987,7 @@ function createCompilerCreator (baseCompile) {
 // `createCompilerCreator` allows creating compilers that use alternative
 // parser/optimizer/codegen, e.g the SSR optimizing compiler.
 // Here we just export a default compiler using the default parts.
-var createCompiler = createCompilerCreator(function baseCompile (
+function baseCompile(
   template,
   options
 ) {
@@ -4942,9 +5002,10 @@ var createCompiler = createCompilerCreator(function baseCompile (
   return {
     ast: ast,
     render: code.render,
-    staticRenderFns: code.staticRenderFns
-  }
-});
+    staticRenderFns: code.staticRenderFns,
+  };
+}
+var createCompiler = createCompilerCreator(baseCompile);
 
 /*  */
 
